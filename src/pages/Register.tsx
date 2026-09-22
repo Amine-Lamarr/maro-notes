@@ -51,16 +51,16 @@ export default function Register() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[70vh] animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="w-full max-w-xl p-12 sm:p-16 rounded-[3rem] bg-white border border-[#E2E8F0] shadow-[0_25px_65px_rgba(0,0,0,0.08)] relative overflow-hidden">
+    <div className="flex items-center justify-center min-h-[70vh] animate-in fade-in slide-in-from-bottom-4 duration-700 px-2 sm:px-0">
+      <div className="w-full max-w-xl p-6 sm:p-16 rounded-3xl sm:rounded-[3rem] bg-white border border-[#E2E8F0] shadow-[0_25px_65px_rgba(0,0,0,0.08)] relative overflow-hidden">
         {/* Subtle decorative glow */}
         <div className="absolute top-0 right-0 w-72 h-72 bg-blue-100/50 blur-[90px] -translate-y-1/2 translate-x-1/3 rounded-full pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-purple-100/50 blur-[90px] translate-y-1/2 -translate-x-1/3 rounded-full pointer-events-none" />
         
-        <div className="relative z-10 space-y-10">
-          <div className="space-y-3">
-            <h1 className="font-serif text-4xl sm:text-5xl font-extrabold text-[#0F172A] tracking-tight drop-shadow-sm">Join MaroNotes</h1>
-            <p className="text-base sm:text-lg text-[#475569] font-normal">Start mastering your curriculum today</p>
+        <div className="relative z-10 space-y-6 sm:space-y-10">
+          <div className="space-y-2 sm:space-y-3">
+            <h1 className="font-serif text-3xl sm:text-5xl font-extrabold text-[#0F172A] tracking-tight drop-shadow-sm">Join MaroNotes</h1>
+            <p className="text-sm sm:text-lg text-[#475569] font-normal">Start mastering your curriculum today</p>
           </div>
 
           <form onSubmit={handleRegister} className="space-y-6">

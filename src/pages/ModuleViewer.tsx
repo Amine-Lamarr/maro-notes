@@ -2,13 +2,11 @@ import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { ArrowLeft, ChevronLeft, ChevronRight, Monitor, FileCode2, Maximize, Minimize, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Monitor, FileCode2, Maximize, Minimize, ZoomIn, ZoomOut, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+// Set up the PDF.js worker using unpkg / cdn matching pdfjs version for stability across dev and production
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function ModuleViewer() {
   const { id } = useParams();
@@ -69,17 +67,25 @@ export default function ModuleViewer() {
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
     const isAdmin = profile?.role?.toLowerCase() === 'admin' || profile?.role?.toLowerCase() === 'true';
 
-    // Fetch purchases for this user
-    const { data: purchases, error: purchaseError } = await supabase
-      .from('purchases')
-      .select('note_id')
-      .eq('user_id', session.user.id);
-      
-    if (purchaseError) {
-      console.error("Purchase select error:", purchaseError);
+    // Fetch purchases for this user safely
+    let purchasedIds = new Set<string>();
+    try {
+      const { data: purchases, error: purchaseError } = await supabase
+        .from('purchases')
+        .select('*')
+        .eq('user_id', session.user.id);
+        
+      if (!purchaseError && purchases) {
+        purchases.forEach((p: any) => {
+          if (p.note_id) purchasedIds.add(p.note_id);
+          if (p.notes_id) purchasedIds.add(p.notes_id);
+          if (p.module_id) purchasedIds.add(p.module_id);
+          if (p.id) purchasedIds.add(p.id);
+        });
+      }
+    } catch (err) {
+      console.warn("Could not query purchases table:", err);
     }
-      
-    const purchasedIds = new Set(purchases?.map((p: any) => p.note_id) || []);
 
     // Fetch all notes for this module
     const { data: notesData } = await supabase.from('notes').select('*').eq('module_id', id).order('order_index');
@@ -126,11 +132,16 @@ export default function ModuleViewer() {
     }
   }, [activeNote]);
 
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
   const loadPdf = async (filePath: string) => {
+    setPdfError(null);
     const { data, error } = await supabase.storage.from('modules').createSignedUrl(filePath, 3600);
     if (error) {
-      toast.error('Failed to load PDF');
+      toast.error('Failed to load PDF: ' + error.message);
+      setPdfError('Failed to generate secure URL: ' + error.message);
     } else {
+      // Use direct signedUrl with proxy fallback
       setPdfUrl(`/api/proxy-pdf?url=${encodeURIComponent(data.signedUrl)}`);
       setPageNumber(1);
     }
@@ -138,6 +149,12 @@ export default function ModuleViewer() {
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
+    setPdfError(null);
+  };
+
+  const onDocumentLoadError = (error: Error) => {
+    console.error('PDF load error:', error);
+    setPdfError(error.message || 'Invalid or unreadable PDF structure.');
   };
 
   if (loading) return <div className="text-center py-24 small-caps tracking-widest animate-pulse">Initializing Viewer...</div>;
@@ -245,10 +262,10 @@ export default function ModuleViewer() {
         <div className="absolute inset-0 bg-radial from-[#3a0269]/30 via-transparent to-black/80 pointer-events-none" />
 
         {/* Zoom Controls */}
-        <div className="absolute bottom-24 right-4 md:fixed md:bottom-12 md:right-12 flex flex-col gap-2 z-[110]">
+        <div className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 md:fixed md:bottom-12 md:right-12 flex flex-col gap-2 z-[110]">
           <button 
             onClick={() => setZoom(z => Math.min(z + 0.1, 3))}
-            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#eb993f] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl"
+            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#eb993f] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl active:scale-95"
             title="Zoom In"
           >
             <ZoomIn className="w-4 h-4 text-white" />
@@ -258,7 +275,7 @@ export default function ModuleViewer() {
           </div>
           <button 
             onClick={() => setZoom(z => Math.max(z - 0.1, 0.5))}
-            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#b20000] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl"
+            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#b20000] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl active:scale-95"
             title="Zoom Out"
           >
             <ZoomOut className="w-4 h-4 text-white" />
@@ -272,12 +289,33 @@ export default function ModuleViewer() {
           </div>
         )}
 
-        {pdfUrl ? (
+        {pdfError && (
+          <div className="relative z-20 my-12 max-w-md mx-auto p-6 rounded-2xl bg-red-950/40 border border-red-500/30 text-center text-white backdrop-blur-md">
+            <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+            <h3 className="font-serif text-lg font-bold mb-1">Unable to Render PDF</h3>
+            <p className="text-xs text-red-200/80 mb-4">{pdfError}</p>
+            <p className="text-xs text-white/50 mb-4">The uploaded file may be corrupted, still processing, or not a standard PDF format.</p>
+            {activeNote && (
+              <button
+                onClick={() => {
+                  const target = activeNote.hasPurchased ? activeNote.file_path : activeNote.preview_file_path;
+                  if (target) loadPdf(target);
+                }}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors"
+              >
+                Retry Loading
+              </button>
+            )}
+          </div>
+        )}
+
+        {pdfUrl && !pdfError ? (
           viewMode === 'scroll' ? (
              <div className="w-full h-full relative z-10 flex flex-col items-center py-12 px-4 space-y-8">
                 <Document
                   file={pdfUrl}
                   onLoadSuccess={onDocumentLoadSuccess}
+                  onLoadError={onDocumentLoadError}
                   loading={<div className="py-24 text-white/40 animate-pulse small-caps tracking-widest font-mono">Loading Document...</div>}
                   className="pdf-document flex flex-col gap-8 items-center w-full"
                 >
@@ -301,6 +339,7 @@ export default function ModuleViewer() {
                 <Document
                   file={pdfUrl}
                   onLoadSuccess={onDocumentLoadSuccess}
+                  onLoadError={onDocumentLoadError}
                   loading={<div className="py-24 text-white/40 animate-pulse small-caps tracking-widest font-mono">Loading Document...</div>}
                   className="pdf-document"
                 >

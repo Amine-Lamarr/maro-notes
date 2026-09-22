@@ -68,13 +68,25 @@ export default function Dashboard() {
       return;
     }
 
-    const { data: purchaseData, error } = await supabase
-      .from('purchases')
-      .select('*, notes(*)')
-      .eq('user_id', session.user.id);
-      
-    if (error) {
-      console.error("Dashboard fetch error:", error);
+    let purchaseData: any[] = [];
+    try {
+      const { data, error } = await supabase
+        .from('purchases')
+        .select('*, notes(*)')
+        .eq('user_id', session.user.id);
+        
+      if (error) {
+        // Fallback to select without relation if relation or column note_id is absent
+        const { data: fallbackData } = await supabase
+          .from('purchases')
+          .select('*')
+          .eq('user_id', session.user.id);
+        purchaseData = fallbackData || [];
+      } else if (data) {
+        purchaseData = data;
+      }
+    } catch (err) {
+      console.warn("Purchases fetch error:", err);
     }
       
     if (purchaseData) {
@@ -100,20 +112,20 @@ export default function Dashboard() {
     <div className="space-y-14 max-w-6xl mx-auto pt-4 pb-20 relative z-10 animate-in fade-in duration-700">
       
       {/* Header Banner */}
-      <div className="rounded-[2.5rem] p-12 sm:p-16 md:p-20 bg-gradient-to-br from-[#090214] via-[#1a0130] to-[#3a0269] border border-purple-900/50 shadow-[0_20px_50px_rgba(0,0,0,0.4)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8 relative overflow-hidden">
+      <div className="rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-16 md:p-20 bg-gradient-to-br from-[#090214] via-[#1a0130] to-[#3a0269] border border-purple-900/50 shadow-[0_20px_50px_rgba(0,0,0,0.4)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-8 relative overflow-hidden">
         {/* Glow Effects */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#df6000]/20 blur-[80px] rounded-full pointer-events-none" />
         <div className="absolute bottom-0 left-10 w-48 h-48 bg-[#2563EB]/20 blur-[60px] rounded-full pointer-events-none" />
         
-        <div className="space-y-5 relative z-10">
-          <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-[#ffad6b] bg-white dark:bg-[#111]/5 border border-white/10 px-5 py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md">
-            <Sparkles className="w-4 h-4 text-[#ffad6b]" />
+        <div className="space-y-4 sm:space-y-5 relative z-10">
+          <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-[#ffad6b] bg-white dark:bg-[#111]/5 border border-white/10 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ffad6b]" />
             Personal Workspace
           </div>
-          <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight drop-shadow-md">
+          <h1 className="font-serif text-3xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight drop-shadow-md">
             Your Dashboard
           </h1>
-          <p className="text-purple-100/80 text-lg sm:text-xl font-normal max-w-2xl leading-relaxed">
+          <p className="text-purple-100/80 text-sm sm:text-xl font-normal max-w-2xl leading-relaxed">
             Access your unlocked course materials, revision papers, and explore academic years.
           </p>
         </div>

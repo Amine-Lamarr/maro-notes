@@ -74,12 +74,26 @@ export default function ModuleDetails() {
         if (_isAdmin) {
            docs = docs.map(d => ({...d, hasPurchased: true}) as Note);
         } else {
-          const { data: purchases } = await supabase
-            .from('purchases')
-            .select('note_id')
-            .eq('user_id', session.user.id);
+          let purchasedIds = new Set<string>();
+          try {
+            // First attempt with * to detect actual columns
+            const { data: purchases, error: pErr } = await supabase
+              .from('purchases')
+              .select('*')
+              .eq('user_id', session.user.id);
+              
+            if (!pErr && purchases) {
+              purchases.forEach((p: any) => {
+                if (p.note_id) purchasedIds.add(p.note_id);
+                if (p.notes_id) purchasedIds.add(p.notes_id);
+                if (p.module_id) purchasedIds.add(p.module_id);
+                if (p.id) purchasedIds.add(p.id);
+              });
+            }
+          } catch (e) {
+            console.warn("Could not query purchases table:", e);
+          }
             
-          const purchasedIds = new Set(purchases?.map(p => p.note_id) || []);
           docs = docs.map(d => ({...d, hasPurchased: purchasedIds.has(d.id)}) as Note);
         }
       }
@@ -140,25 +154,25 @@ export default function ModuleDetails() {
     <div className="max-w-6xl mx-auto space-y-10 sm:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pt-4 pb-20">
       
       {/* Header */}
-      <div className="rounded-[2.5rem] p-12 sm:p-16 md:p-20 bg-gradient-to-br from-[#090214] via-[#1a0130] to-[#3a0269] border border-purple-900/50 shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-5 relative overflow-hidden">
+      <div className="rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-16 md:p-20 bg-gradient-to-br from-[#090214] via-[#1a0130] to-[#3a0269] border border-purple-900/50 shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-4 sm:space-y-5 relative overflow-hidden">
         {/* Glow Effects */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#df6000]/20 blur-[80px] rounded-full pointer-events-none" />
         <div className="absolute bottom-0 left-10 w-48 h-48 bg-[#2563EB]/20 blur-[60px] rounded-full pointer-events-none" />
         
-        <div className="relative z-10 space-y-5">
+        <div className="relative z-10 space-y-4 sm:space-y-5">
           <button 
             onClick={() => navigate('/modules')} 
-            className="font-mono text-xs sm:text-sm uppercase tracking-wider text-[#ffad6b] hover:text-[#fff] inline-flex items-center gap-1.5 font-bold transition-colors mb-2 bg-white dark:bg-[#111]/5 border border-white/10 px-4 py-1.5 rounded-full backdrop-blur-md"
+            className="font-mono text-xs sm:text-sm uppercase tracking-wider text-[#ffad6b] hover:text-[#fff] inline-flex items-center gap-1.5 font-bold transition-colors mb-1 sm:mb-2 bg-white dark:bg-[#111]/5 border border-white/10 px-3.5 sm:px-4 py-1.5 rounded-full backdrop-blur-md"
           >
             <ArrowLeft className="w-4 h-4" /> Back to Courses
           </button>
-          <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-white bg-white dark:bg-[#111]/10 border border-white/20 px-5 py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md block w-max mt-2">
+          <div className="font-mono text-[11px] sm:text-sm uppercase tracking-widest text-white bg-white dark:bg-[#111]/10 border border-white/20 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md block w-max">
             Course Syllabus
           </div>
-          <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold text-white tracking-tight drop-shadow-md">
+          <h1 className="font-serif text-3xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold text-white tracking-tight drop-shadow-md">
             {mod.title}
           </h1>
-          <p className="text-purple-100/80 text-lg sm:text-xl font-normal max-w-2xl leading-relaxed">
+          <p className="text-purple-100/80 text-sm sm:text-xl font-normal max-w-2xl leading-relaxed">
             {mod.description || "Browse structured lesson notes, sample previews, and full downloadable curriculum documents."}
           </p>
         </div>
@@ -168,7 +182,7 @@ export default function ModuleDetails() {
       <div className="space-y-6">
         <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
           <h2 className="font-serif text-2xl sm:text-3xl font-bold text-navy">PDF Lessons & Notes</h2>
-          <span className="font-mono text-xs uppercase tracking-wider text-[#64748B] font-semibold">{notes.length} Available</span>
+          <span className="font-mono text-xs uppercase tracking-wider text-black font-semibold">{notes.length} Available</span>
         </div>
         
         {notes.length === 0 ? (
@@ -230,37 +244,26 @@ export default function ModuleDetails() {
                     {note.description || "No description provided."}
                   </p>
                   
-                  <div className="flex flex-col gap-3 mt-auto">
-                    {/* Free Preview Tag / Button */}
-                    <div className={`border rounded-xl p-3.5 flex flex-col gap-2.5 ${note.preview_file_path ? 'bg-purple-50/50 border-purple-200/80' : 'bg-slate-50 border-slate-200'}`}>
-                      <div className="flex items-center justify-between">
-                        <span className={`font-mono text-[11px] uppercase tracking-wider font-bold ${note.preview_file_path ? 'text-[#7000ab]' : 'text-slate-400'}`}>
-                          Free Sample
-                        </span>
-                        {note.preview_file_path ? (
-                          <span className="w-2 h-2 rounded-full bg-[#7000ab] animate-pulse" />
-                        ) : (
-                          <span className="w-2 h-2 rounded-full bg-slate-300" />
-                        )}
-                      </div>
-                      <button 
-                        disabled={!note.preview_file_path}
-                        className={`w-full py-2 px-3 rounded-lg font-mono font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
-                          note.preview_file_path 
-                            ? "bg-white dark:bg-[#111] text-navy hover:bg-slate-50 border border-purple-200 shadow-xs cursor-pointer" 
-                            : "bg-slate-100 dark:bg-[#222] text-slate-400 cursor-not-allowed border border-slate-200"
-                        }`}
-                        onClick={() => {
-                          if (note.preview_file_path) {
-                            navigate(`/modules/${mod.id}/viewer?note=${note.id}&preview=true`);
-                          }
-                        }}
-                      >
-                        <FileText className="w-3.5 h-3.5" /> 
-                        {note.preview_file_path ? "View Sample Preview" : "No Preview Available"}
-                      </button>
-                    </div>
+                  <div className="flex flex-col gap-2.5 mt-auto pt-2">
+                    {/* Preview Button */}
+                    <button 
+                      disabled={!note.preview_file_path}
+                      className={`w-full py-3 px-4 rounded-xl font-mono font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 border ${
+                        note.preview_file_path 
+                          ? "bg-white text-black hover:bg-purple-50/60 border-purple-200/90 shadow-xs cursor-pointer hover:border-purple-300" 
+                          : "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-200"
+                      }`}
+                      onClick={() => {
+                        if (note.preview_file_path) {
+                          navigate(`/modules/${mod.id}/viewer?note=${note.id}&preview=true`);
+                        }
+                      }}
+                    >
+                      <FileText className="w-3.5 h-3.5 text-black" /> 
+                      <span className="text-black">{note.preview_file_path ? "Free Preview" : "No Preview"}</span>
+                    </button>
 
+                    {/* Purchase or Open Full Document Button */}
                     {note.hasPurchased ? (
                       <button 
                         className="w-full bg-[#0d0178] hover:bg-[#1402a8] text-white py-3.5 px-4 rounded-xl font-mono font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 shadow-md shadow-blue-950/20 cursor-pointer"

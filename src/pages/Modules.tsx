@@ -77,31 +77,31 @@ export default function Modules() {
     <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 pt-4 pb-20">
       
       {/* Header & Search */}
-      <div className="rounded-[2.5rem] p-12 sm:p-16 md:p-20 bg-gradient-to-br from-[#090214] via-[#1a0130] to-[#3a0269] border border-purple-900/50 shadow-[0_20px_50px_rgba(0,0,0,0.4)] flex flex-col md:flex-row md:items-end justify-between gap-8 relative overflow-hidden">
+      <div className="rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-16 md:p-20 bg-gradient-to-br from-[#090214] via-[#1a0130] to-[#3a0269] border border-purple-900/50 shadow-[0_20px_50px_rgba(0,0,0,0.4)] flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8 relative overflow-hidden">
         {/* Glow Effects */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#df6000]/20 blur-[80px] rounded-full pointer-events-none" />
         <div className="absolute bottom-0 left-10 w-48 h-48 bg-[#2563EB]/20 blur-[60px] rounded-full pointer-events-none" />
         
-        <div className="space-y-5 relative z-10">
+        <div className="space-y-4 sm:space-y-5 relative z-10">
           <button 
             onClick={() => navigate('/years')} 
-            className="font-mono text-xs sm:text-sm uppercase tracking-wider text-[#ffad6b] hover:text-[#fff] inline-flex items-center gap-1.5 font-bold transition-colors mb-2 bg-white dark:bg-[#111]/5 border border-white/10 px-4 py-1.5 rounded-full backdrop-blur-md"
+            className="font-mono text-xs sm:text-sm uppercase tracking-wider text-[#ffad6b] hover:text-[#fff] inline-flex items-center gap-1.5 font-bold transition-colors mb-1 sm:mb-2 bg-white dark:bg-[#111]/5 border border-white/10 px-3.5 sm:px-4 py-1.5 rounded-full backdrop-blur-md"
           >
             <ArrowLeft className="w-4 h-4" /> Back to Years
           </button>
-          <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight drop-shadow-md">
+          <h1 className="font-serif text-3xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight drop-shadow-md">
             Available <span className="text-[#ffad6b] italic">Courses</span>
           </h1>
-          <p className="text-purple-100/80 text-lg sm:text-xl font-normal max-w-xl leading-relaxed">
+          <p className="text-purple-100/80 text-sm sm:text-xl font-normal max-w-xl leading-relaxed">
             Select a subject course to view available lesson modules and revision PDF files.
           </p>
         </div>
         
-        <div className="relative w-full md:w-80 relative z-10 mt-6 md:mt-0">
-          <Search className="absolute left-5 top-4 h-5 w-5 text-white/50" />
+        <div className="relative w-full md:w-80 relative z-10 mt-2 sm:mt-6 md:mt-0">
+          <Search className="absolute left-4 sm:left-5 top-3.5 sm:top-4 h-5 w-5 text-white/50" />
           <input 
             placeholder="Search courses..." 
-            className="w-full bg-white dark:bg-[#111]/10 border border-white/20 rounded-full pl-12 pr-5 py-4 text-base text-white placeholder:text-white/50 focus:outline-none focus:border-[#ffad6b] focus:ring-2 focus:ring-[#ffad6b]/30 transition-all font-sans shadow-lg backdrop-blur-md"
+            className="w-full bg-white dark:bg-[#111]/10 border border-white/20 rounded-full pl-11 sm:pl-12 pr-4 sm:pr-5 py-3 sm:py-4 text-sm sm:text-base text-white placeholder:text-white/50 focus:outline-none focus:border-[#ffad6b] focus:ring-2 focus:ring-[#ffad6b]/30 transition-all font-sans shadow-lg backdrop-blur-md"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

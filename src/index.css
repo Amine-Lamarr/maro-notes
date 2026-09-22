@@ -194,8 +194,12 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
   body {
-    @apply text-brand-navy font-sans antialiased;
+    @apply text-brand-navy font-sans antialiased overflow-x-hidden;
     background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
     background-attachment: fixed;
     background-repeat: no-repeat;
