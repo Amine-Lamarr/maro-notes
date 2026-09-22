@@ -125,10 +125,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Link>
           
           <nav className="flex items-center shrink-0">
-            <div className="hidden md:flex items-center gap-4 md:gap-6">
+            <div className="hidden md:flex items-center gap-3 lg:gap-6">
               <Link 
                 to="/years" 
-                className="px-4 py-2 rounded-xl text-sm font-mono font-bold tracking-wider uppercase text-white/90 hover:text-white hover:bg-white/15 transition-all shadow-[0_4px_12px_rgba(0,0,0,0.25)] bg-white/10"
+                className="px-3.5 lg:px-4 py-2 rounded-xl text-xs lg:text-sm font-mono font-bold tracking-wider uppercase text-white/90 hover:text-white hover:bg-white/15 transition-all shadow-[0_4px_12px_rgba(0,0,0,0.25)] bg-white/10"
               >
                 Curriculum
               </Link>
@@ -141,27 +141,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     </Link>
                   )}
                   
-                  <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white/15 border border-white/20 rounded-full backdrop-blur-sm shadow-xs">
+                  <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 bg-white/15 border border-white/20 rounded-full backdrop-blur-sm shadow-xs">
                     <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
                     <span className="font-mono text-[10px] text-white tracking-widest font-bold">{isAdmin ? 'ADMIN' : 'USER'} ROLE</span>
                   </div>
 
-                  <Link to="/dashboard" className="flex items-center justify-center gap-2 hover:bg-slate-100 dark:bg-[#222] px-7 py-3.5 shadow-md bg-white dark:bg-[#111] text-navy rounded-full transition-all font-bold">
-                    <BookOpen className="h-4.5 w-4.5 stroke-[#0F172A] shrink-0" />
+                  <Link to="/dashboard" className="flex items-center justify-center gap-1.5 lg:gap-2 hover:bg-slate-100 dark:bg-[#222] px-4 lg:px-7 py-2.5 lg:py-3.5 shadow-md bg-white dark:bg-[#111] text-navy rounded-full transition-all font-bold">
+                    <BookOpen className="h-4 w-4 lg:h-4.5 lg:w-4.5 stroke-[#0F172A] shrink-0" />
                     <span className="font-mono text-xs uppercase tracking-wider pr-1 font-bold text-navy">Dashboard</span>
                   </Link>
-                  <button onClick={handleLogout} className="flex items-center justify-center gap-2 text-white hover:bg-white/15 px-7 py-3.5 border border-white/30 bg-transparent rounded-full transition-all font-bold">
-                    <LogOut className="h-4.5 w-4.5 stroke-white shrink-0" />
+                  <button onClick={handleLogout} className="flex items-center justify-center gap-1.5 lg:gap-2 text-white hover:bg-white/15 px-4 lg:px-7 py-2.5 lg:py-3.5 border border-white/30 bg-transparent rounded-full transition-all font-bold">
+                    <LogOut className="h-4 w-4 lg:h-4.5 lg:w-4.5 stroke-white shrink-0" />
                     <span className="font-mono text-xs uppercase tracking-wider pr-1 font-bold text-white">Logout</span>
                   </button>
                 </>
               ) : (
                 <>
-                  <Link to="/login" className="font-mono text-sm uppercase tracking-wider text-purple-100 hover:text-white transition-colors font-medium">
+                  <Link to="/login" className="font-mono text-xs lg:text-sm uppercase tracking-wider text-purple-100 hover:text-white transition-colors font-medium px-2">
                     Login
                   </Link>
-                  <Link to="/register" className="flex items-center justify-center px-7 py-3.5 bg-white dark:bg-[#111] text-navy hover:bg-slate-100 dark:bg-[#222] rounded-full transition-all shadow-md font-bold">
-                    <span className="font-mono tracking-widest text-sm uppercase text-navy">Get Started</span>
+                  <Link to="/register" className="flex items-center justify-center px-4 lg:px-7 py-2.5 lg:py-3.5 bg-white dark:bg-[#111] text-navy hover:bg-slate-100 dark:bg-[#222] rounded-full transition-all shadow-md font-bold">
+                    <span className="font-mono tracking-widest text-xs lg:text-sm uppercase text-navy whitespace-nowrap">Get Started</span>
                   </Link>
                 </>
               )}
