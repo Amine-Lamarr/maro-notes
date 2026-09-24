@@ -175,8 +175,9 @@ export default function ModuleViewer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           noteId: activeNote.id,
-          title: activeNote.title,
-          price: activeNote.price || 0,
+          title: activeNote.title || 'Course Lesson',
+          noteTitle: activeNote.title || 'Course Lesson',
+          price: Number(activeNote.price || 0),
           currency: 'usd',
           userId: session.user.id,
           moduleId: id,

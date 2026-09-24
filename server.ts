@@ -125,12 +125,13 @@ function getSupabaseAdmin() {
 
 app.post('/api/create-checkout-session', async (req, res) => {
   try {
-    const { noteId, title, price, priceMAD, currency = 'usd', userId, moduleId } = req.body;
+    const { noteId, title, noteTitle, price, priceMAD, currency = 'usd', userId, moduleId } = req.body;
     const stripe = getStripe();
     
     // Normalize price: priceMAD or price
     const rawPrice = Number(priceMAD ?? price ?? 0);
     const validCurrency = (currency || 'usd').toLowerCase();
+    const productName = (title || noteTitle || 'MaroNotes Premium Lesson').trim() || 'MaroNotes Lesson';
 
     if (rawPrice <= 0) {
       return res.status(400).json({ error: 'This item is free or has invalid price' });
@@ -139,15 +140,13 @@ app.post('/api/create-checkout-session', async (req, res) => {
     const origin = req.headers.origin || (req.headers.host ? `${req.protocol || 'https'}://${req.headers.host}` : 'http://localhost:3000');
 
     const session = await stripe.checkout.sessions.create({
-      // Do not restrict to ['card']; let Stripe dynamic payment methods activate automatically
-      // based on account dashboard settings
       mode: 'payment',
       line_items: [
         {
           price_data: {
             currency: validCurrency,
             product_data: {
-              name: title || 'MaroNotes Premium Lesson',
+              name: productName,
               description: 'MaroNotes Premium Academic Access',
             },
             unit_amount: Math.round(rawPrice * 100), // Stripe expects amount in lowest denomination (cents)

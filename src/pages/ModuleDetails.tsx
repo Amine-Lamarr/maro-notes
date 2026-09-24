@@ -150,8 +150,9 @@ export default function ModuleDetails() {
         },
         body: JSON.stringify({
           noteId: note.id,
-          title: `${mod?.title || 'Course'} - ${note.title}`,
-          price: note.price || 0,
+          title: `${mod?.title || 'Course'} - ${note.title || 'Document'}`,
+          noteTitle: `${mod?.title || 'Course'} - ${note.title || 'Document'}`,
+          price: Number(note.price || 0),
           currency: 'usd',
           userId: session.user.id,
           moduleId: id,

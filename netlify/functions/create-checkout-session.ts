@@ -7,43 +7,51 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { noteId, noteTitle, price, userId, moduleId } = JSON.parse(event.body || '{}');
+    const { noteId, title, noteTitle, price, priceMAD, currency = 'usd', userId, moduleId } = JSON.parse(event.body || '{}');
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     
     if (!stripeKey) {
-      return { statusCode: 500, body: JSON.stringify({ error: 'Stripe configuration missing.' }) };
+      return { 
+        statusCode: 500, 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'STRIPE_SECRET_KEY is missing in your deployment environment variables.' }) 
+      };
     }
 
     const stripe = new Stripe(stripeKey, {
-      apiVersion: '2023-10-16' as any, // Using a stable API version type
+      apiVersion: '2023-10-16' as any,
     });
 
-    // App URL where we return
-    const APP_URL = process.env.URL || 'http://localhost:3000'; // Netlify sets URL environment variable
+    const rawPrice = Number(priceMAD ?? price ?? 0);
+    const validCurrency = (currency || 'usd').toLowerCase();
+    const productName = (title || noteTitle || 'MaroNotes Premium Course').trim() || 'MaroNotes Course Material';
+
+    // Get origin URL
+    const origin = event.headers.origin || (event.headers.host ? `https://${event.headers.host}` : (process.env.URL || 'http://localhost:3000'));
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
+      mode: 'payment',
       line_items: [
         {
           price_data: {
-            currency: 'usd',
+            currency: validCurrency,
             product_data: {
-              name: noteTitle,
+              name: productName,
+              description: 'MaroNotes Academic Premium Access',
             },
-            unit_amount: Math.round(price * 100), // Price in cents
+            unit_amount: Math.round(rawPrice * 100),
           },
           quantity: 1,
         },
       ],
-      mode: 'payment',
-      success_url: `${APP_URL}/dashboard?success=true&note_id=${noteId}&module_id=${moduleId}`,
-      cancel_url: `${APP_URL}/modules/${moduleId}?canceled=true`,
       client_reference_id: userId,
       metadata: {
         noteId,
         moduleId,
         userId,
       },
+      success_url: `${origin}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}&note_id=${noteId}&module_id=${moduleId}`,
+      cancel_url: `${origin}/modules/${moduleId}?canceled=true`,
     });
 
     return {
@@ -53,6 +61,10 @@ export const handler: Handler = async (event) => {
     };
   } catch (error: any) {
     console.error('Stripe error:', error);
-    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+    return { 
+      statusCode: 500, 
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: error.message || 'Failed to create Stripe session' }) 
+    };
   }
 };
