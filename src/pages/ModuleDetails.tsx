@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
-import { FileText, Lock, ArrowRight, Trash2, Edit2, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { FileText, Lock, ArrowRight, Trash2, Edit2, ArrowLeft, CheckCircle2, ExternalLink, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteNoteWithFiles } from '@/lib/deleteHelpers';
 import EditNoteModal from '@/components/EditNoteModal';
@@ -42,6 +42,7 @@ export default function ModuleDetails() {
   }, [canceled]);
 
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [checkoutUrlModal, setCheckoutUrlModal] = useState<{ url: string; title: string; price: number } | null>(null);
 
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -129,13 +130,63 @@ export default function ModuleDetails() {
     });
   };
 
+  const [purchasingNoteId, setPurchasingNoteId] = useState<string | null>(null);
+
   const handlePurchase = async (note: Note) => {
     if (!session) {
+      toast.info("Please login or register to purchase access to this lesson.");
       navigate('/login');
       return;
     }
-    
-    toast.info("Payment system not available yet.");
+
+    try {
+      setPurchasingNoteId(note.id);
+      toast.loading("Preparing secure Stripe Checkout...", { id: 'stripe-checkout' });
+
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          noteId: note.id,
+          title: `${mod?.title || 'Course'} - ${note.title}`,
+          price: note.price || 0,
+          currency: 'usd',
+          userId: session.user.id,
+          moduleId: id,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to initiate Stripe checkout');
+      }
+
+      toast.success("Ready! Redirecting to Stripe...", { id: 'stripe-checkout' });
+      if (data.url) {
+        (window as any).__isRedirectingToCheckout = true;
+        setCheckoutUrlModal({ url: data.url, title: note.title, price: note.price });
+
+        // Try direct navigation
+        try {
+          if (window.top && window.top !== window) {
+            window.top.location.href = data.url;
+          } else {
+            window.location.href = data.url;
+          }
+        } catch {
+          window.location.href = data.url;
+        }
+      } else {
+        throw new Error("No checkout URL returned from server.");
+      }
+    } catch (err: any) {
+      console.error("Purchase initiation error:", err);
+      toast.error(err.message || "Failed to start checkout. Please ensure Stripe keys are configured in Admin.", { id: 'stripe-checkout' });
+    } finally {
+      setPurchasingNoteId(null);
+    }
   };
 
   if (loading) {
@@ -273,11 +324,21 @@ export default function ModuleDetails() {
                       </button>
                     ) : (
                       <button 
-                        className="w-full bg-gradient-to-r from-[#7000ab] to-[#0c0291] hover:opacity-95 text-white py-3.5 px-4 rounded-xl font-mono font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 shadow-md shadow-purple-950/20 cursor-pointer"
+                        disabled={purchasingNoteId === note.id}
+                        className="w-full bg-gradient-to-r from-[#7000ab] to-[#0c0291] hover:opacity-95 text-white py-3.5 px-4 rounded-xl font-mono font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 shadow-md shadow-purple-950/20 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                         onClick={() => handlePurchase(note)}
                       >
-                        <Lock className="w-4 h-4 text-white" /> 
-                        <span>Unlock Document &bull; ${note.price}</span>
+                        {purchasingNoteId === note.id ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span>Redirecting to Stripe...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="w-4 h-4 text-white" /> 
+                            <span>Unlock Document &bull; ${note.price}</span>
+                          </>
+                        )}
                       </button>
                     )}
                   </div>
@@ -295,6 +356,60 @@ export default function ModuleDetails() {
           onClose={() => setEditingNote(null)}
           onSuccess={fetchData}
         />
+      )}
+
+      {/* Stripe Checkout Direct Link Modal */}
+      {checkoutUrlModal && (
+        <div className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-purple-200 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-[#7000ab]">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <h3 className="font-serif text-lg font-bold text-navy">Stripe Checkout Ready</h3>
+              </div>
+              <button 
+                onClick={() => setCheckoutUrlModal(null)} 
+                className="p-1.5 text-slate-400 hover:text-navy rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-100">
+              <p className="font-serif font-bold text-navy text-sm">{checkoutUrlModal.title}</p>
+              <p className="font-mono text-xs text-purple-700 font-bold mt-1">Amount: ${checkoutUrlModal.price}</p>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              If your browser didn't redirect automatically or opened a blank skeleton screen, click below to open the checkout page in a clean new tab:
+            </p>
+
+            <div className="space-y-2.5">
+              <a
+                href={checkoutUrlModal.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  (window as any).__isRedirectingToCheckout = true;
+                }}
+                className="w-full bg-gradient-to-r from-[#7000ab] to-[#0c0291] hover:opacity-95 text-white py-3.5 px-4 rounded-xl font-mono font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md shadow-purple-950/20 cursor-pointer"
+              >
+                <span>Proceed to Stripe Checkout</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+
+              <button
+                type="button"
+                onClick={() => setCheckoutUrlModal(null)}
+                className="w-full py-2.5 text-xs font-mono font-bold text-slate-500 hover:text-slate-800"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -40,15 +40,77 @@ app.get('/api/proxy-pdf', async (req, res) => {
   }
 });
 
+// Dynamically check Stripe configuration
+let dynamicStripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
+
+export function getStripeKey(): string {
+  return dynamicStripeSecretKey || process.env.STRIPE_SECRET_KEY || '';
+}
+
+export function setStripeKey(key: string) {
+  dynamicStripeSecretKey = key.trim();
+  stripeClient = null; // Re-instantiate with new key
+}
+
 let stripeClient: Stripe | null = null;
 function getStripe() {
+  const key = getStripeKey();
+  if (!key) {
+    throw new Error('STRIPE_SECRET_KEY is missing. Please configure it in Admin > Stripe Settings.');
+  }
+  if (key.startsWith('pk_')) {
+    throw new Error('You provided a publishable key (' + key.substring(0, 7) + '...). A Secret Key starting with "sk_test_" or "sk_live_" is required for backend payments. Please update it in Admin > Stripe Settings.');
+  }
   if (!stripeClient) {
-    const key = process.env.STRIPE_SECRET_KEY;
-    if (!key) throw new Error('STRIPE_SECRET_KEY is missing');
     stripeClient = new Stripe(key, { apiVersion: '2023-10-16' as any });
   }
   return stripeClient;
 }
+
+// Endpoint to inspect Stripe status and publishable info (without leaking full secret)
+app.get('/api/stripe/status', (req, res) => {
+  const currentKey = getStripeKey();
+  const isConfigured = Boolean(currentKey && currentKey.startsWith('sk_'));
+  const keyMasked = currentKey 
+    ? `${currentKey.substring(0, 7)}...${currentKey.substring(currentKey.length - 4)}` 
+    : '';
+
+  res.json({
+    configured: isConfigured,
+    keyMasked,
+    isTest: currentKey.startsWith('sk_test_'),
+  });
+});
+
+// Endpoint for admin to set or update Stripe API Secret Key
+app.post('/api/stripe/config', async (req, res) => {
+  try {
+    const { secretKey } = req.body;
+    if (!secretKey || typeof secretKey !== 'string') {
+      return res.status(400).json({ error: 'Secret key is required' });
+    }
+    const cleanKey = secretKey.trim();
+    if (!cleanKey.startsWith('sk_test_') && !cleanKey.startsWith('sk_live_')) {
+      return res.status(400).json({ error: 'Invalid Stripe Secret Key. Keys typically start with sk_test_ or sk_live_.' });
+    }
+
+    // Verify key by doing a test call to Stripe
+    const testStripe = new Stripe(cleanKey, { apiVersion: '2023-10-16' as any });
+    await testStripe.balance.retrieve();
+
+    setStripeKey(cleanKey);
+    return res.json({ 
+      success: true, 
+      message: 'Stripe API key connected and verified successfully!',
+      isTest: cleanKey.startsWith('sk_test_')
+    });
+  } catch (err: any) {
+    console.error('Stripe key verification failed:', err);
+    return res.status(400).json({ 
+      error: 'Invalid Stripe Secret Key: ' + (err.message || 'Verification failed')
+    });
+  }
+});
 
 let supabaseAdmin: any = null;
 function getSupabaseAdmin() {
@@ -63,21 +125,32 @@ function getSupabaseAdmin() {
 
 app.post('/api/create-checkout-session', async (req, res) => {
   try {
-    const { noteId, title, priceMAD, userId, moduleId } = req.body;
+    const { noteId, title, price, priceMAD, currency = 'usd', userId, moduleId } = req.body;
     const stripe = getStripe();
     
+    // Normalize price: priceMAD or price
+    const rawPrice = Number(priceMAD ?? price ?? 0);
+    const validCurrency = (currency || 'usd').toLowerCase();
+
+    if (rawPrice <= 0) {
+      return res.status(400).json({ error: 'This item is free or has invalid price' });
+    }
+
+    const origin = req.headers.origin || (req.headers.host ? `${req.protocol || 'https'}://${req.headers.host}` : 'http://localhost:3000');
+
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
+      // Do not restrict to ['card']; let Stripe dynamic payment methods activate automatically
+      // based on account dashboard settings
       mode: 'payment',
       line_items: [
         {
           price_data: {
-            currency: 'mad',
+            currency: validCurrency,
             product_data: {
-              name: title,
-              description: 'MaroNotes Premium Module Access',
+              name: title || 'MaroNotes Premium Lesson',
+              description: 'MaroNotes Premium Academic Access',
             },
-            unit_amount: priceMAD * 100, // Stripe expects amount in cents
+            unit_amount: Math.round(rawPrice * 100), // Stripe expects amount in lowest denomination (cents)
           },
           quantity: 1,
         },
@@ -88,14 +161,14 @@ app.post('/api/create-checkout-session', async (req, res) => {
         moduleId,
         userId
       },
-      success_url: `${req.headers.origin}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}&note_id=${noteId}&module_id=${moduleId}`,
-      cancel_url: `${req.headers.origin}/modules/${moduleId}/viewer?note=${noteId}&canceled=true`,
+      success_url: `${origin}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}&note_id=${noteId}&module_id=${moduleId}`,
+      cancel_url: `${origin}/modules/${moduleId}?canceled=true`,
     });
 
     res.json({ url: session.url });
   } catch (error: any) {
-    console.error('Stripe error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Stripe checkout error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create checkout session' });
   }
 });
 

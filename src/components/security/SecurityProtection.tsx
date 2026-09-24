@@ -49,7 +49,12 @@ export default function SecurityProtection({ session }: SecurityProtectionProps)
     };
 
     // 3. Obscure screen when window loses focus (Stops OS Snipping Tools)
-    const handleBlur = () => setIsObscured(true);
+    // Avoid obscuring during page redirects or external navigation (like Stripe Checkout)
+    const handleBlur = () => {
+      // Do not obscure if user is currently redirecting
+      if ((window as any).__isRedirectingToCheckout) return;
+      setIsObscured(true);
+    };
     const handleFocus = () => setIsObscured(false);
     
     // Aggressively check visibility

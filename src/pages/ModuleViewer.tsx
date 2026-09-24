@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { ArrowLeft, ChevronLeft, ChevronRight, Monitor, FileCode2, Maximize, Minimize, ZoomIn, ZoomOut, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Monitor, FileCode2, Maximize, Minimize, ZoomIn, ZoomOut, AlertCircle, Lock, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Set up the PDF.js worker using unpkg / cdn matching pdfjs version for stability across dev and production
@@ -157,6 +157,56 @@ export default function ModuleViewer() {
     setPdfError(error.message || 'Invalid or unreadable PDF structure.');
   };
 
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const handleCheckout = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.info('Please log in to purchase this module');
+      navigate('/login');
+      return;
+    }
+    if (!activeNote) return;
+
+    try {
+      setIsPurchasing(true);
+      toast.loading('Preparing secure Stripe checkout...', { id: 'viewer-checkout' });
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          noteId: activeNote.id,
+          title: activeNote.title,
+          price: activeNote.price || 0,
+          currency: 'usd',
+          userId: session.user.id,
+          moduleId: id,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to initiate checkout');
+      }
+
+      if (data.url) {
+        (window as any).__isRedirectingToCheckout = true;
+        try {
+          if (window.top && window.top !== window) {
+            window.top.location.href = data.url;
+          } else {
+            window.location.href = data.url;
+          }
+        } catch {
+          window.location.href = data.url;
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to start Stripe checkout', { id: 'viewer-checkout' });
+    } finally {
+      setIsPurchasing(false);
+    }
+  };
+
   if (loading) return <div className="text-center py-24 small-caps tracking-widest animate-pulse">Initializing Viewer...</div>;
 
   return (
@@ -283,9 +333,28 @@ export default function ModuleViewer() {
         </div>
 
         {activeNote && !activeNote.hasPurchased && (
-          <div className="absolute top-4 left-4 right-4 md:left-auto md:right-auto z-[110] bg-white dark:bg-[#111]/10 border border-white/20 text-white px-4 md:px-6 py-2 md:py-3 rounded-full backdrop-blur-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] font-sans font-bold text-[10px] md:text-xs tracking-widest uppercase flex items-center justify-center gap-2 md:gap-3 text-center">
-             <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-secondary shadow-[0_0_8px_rgba(var(--secondary),0.8)] animate-pulse shrink-0" />
-             <span className="line-clamp-2">Free Preview Mode - Unlock full course for more</span>
+          <div className="absolute top-4 left-4 right-4 md:left-auto md:right-auto z-[110] bg-black/80 border border-purple-500/40 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-full backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.6)] font-sans text-xs tracking-wider flex items-center justify-between sm:justify-center gap-3 md:gap-4 max-w-xl mx-auto">
+             <div className="flex items-center gap-2">
+               <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+               <span className="font-mono text-[10px] sm:text-xs uppercase font-bold text-amber-300">Free Preview</span>
+             </div>
+             <button
+               onClick={handleCheckout}
+               disabled={isPurchasing}
+               className="bg-gradient-to-r from-[#7000ab] to-[#0c0291] hover:brightness-110 text-white text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+             >
+               {isPurchasing ? (
+                 <>
+                   <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                   <span>Redirecting...</span>
+                 </>
+               ) : (
+                 <>
+                   <Lock className="w-3 h-3 text-white" />
+                   <span>Unlock Course {activeNote.price ? `($${activeNote.price})` : ''}</span>
+                 </>
+               )}
+             </button>
           </div>
         )}
 

@@ -2,5 +2,7 @@
   "name": "MaroNotes - Premium Study Modules",
   "description": "A modern dark-mode platform for selling structured study notes and PDFs organized into academic modules.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

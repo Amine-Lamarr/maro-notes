@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
-import { Settings, UploadCloud, Sparkles, FolderPlus, BookOpen, Layers, CheckCircle2 } from 'lucide-react';
+import { Settings, UploadCloud, Sparkles, FolderPlus, BookOpen, Layers, CheckCircle2, Key, CreditCard, Check, AlertTriangle } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -24,11 +24,62 @@ export default function AdminDashboard() {
   const [previewPdfFile, setPreviewPdfFile] = useState<File | null>(null);
 
   const [isUploading, setIsUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'upload' | 'stripe'>('upload');
+
+  // Stripe Management State
+  const [stripeSecretKeyInput, setStripeSecretKeyInput] = useState('');
+  const [stripeStatus, setStripeStatus] = useState<{ configured: boolean; keyMasked: string; isTest?: boolean }>({
+    configured: false,
+    keyMasked: '',
+  });
+  const [isVerifyingStripe, setIsVerifyingStripe] = useState(false);
 
   useEffect(() => {
     checkAdmin();
     fetchData();
+    fetchStripeStatus();
   }, []);
+
+  const fetchStripeStatus = async () => {
+    try {
+      const res = await fetch('/api/stripe/status');
+      if (res.ok) {
+        const data = await res.json();
+        setStripeStatus(data);
+      }
+    } catch (e) {
+      console.warn("Could not check stripe status:", e);
+    }
+  };
+
+  const handleSaveStripeKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripeSecretKeyInput.trim()) {
+      toast.error('Please enter your Stripe Secret Key (e.g. sk_test_...)');
+      return;
+    }
+
+    try {
+      setIsVerifyingStripe(true);
+      toast.loading('Validating key with Stripe...', { id: 'stripe-key' });
+      const res = await fetch('/api/stripe/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secretKey: stripeSecretKeyInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save Stripe key');
+      }
+      toast.success(data.message || 'Stripe API key connected successfully!', { id: 'stripe-key' });
+      setStripeSecretKeyInput('');
+      await fetchStripeStatus();
+    } catch (err: any) {
+      toast.error(err.message || 'Verification failed. Please check your Stripe key.', { id: 'stripe-key' });
+    } finally {
+      setIsVerifyingStripe(false);
+    }
+  };
 
   const checkAdmin = async () => {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -181,7 +232,159 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Main Upload Form Card */}
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-3 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 max-w-md">
+        <button
+          onClick={() => setActiveTab('upload')}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-mono text-xs uppercase tracking-wider font-bold transition-all cursor-pointer ${
+            activeTab === 'upload'
+              ? 'bg-white text-navy shadow-sm border border-slate-200'
+              : 'text-slate-500 hover:text-navy hover:bg-white/50'
+          }`}
+        >
+          <UploadCloud className="w-4 h-4" />
+          <span>Upload Lesson</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('stripe')}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-mono text-xs uppercase tracking-wider font-bold transition-all cursor-pointer ${
+            activeTab === 'stripe'
+              ? 'bg-white text-navy shadow-sm border border-slate-200'
+              : 'text-slate-500 hover:text-navy hover:bg-white/50'
+          }`}
+        >
+          <CreditCard className="w-4 h-4 text-[#7000ab]" />
+          <span>Stripe Settings</span>
+          {stripeStatus.configured && (
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'stripe' ? (
+        /* Stripe API Configuration Section */
+        <div className="bg-gradient-to-br from-[#7000ab]/[0.07] via-[#2563EB]/[0.04] to-[#0c0291]/[0.08] rounded-3xl p-8 sm:p-12 border border-purple-200/60 shadow-[0_20px_50px_rgba(0,0,0,0.18)] relative overflow-hidden backdrop-blur-xs space-y-8 animate-in fade-in duration-300">
+          <div>
+            <div className="flex items-center justify-between flex-wrap gap-4 mb-2">
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-navy flex items-center gap-3">
+                <CreditCard className="w-7 h-7 text-[#7000ab]" />
+                Stripe Payment Gateway
+              </h2>
+
+              <div className="flex items-center gap-2">
+                {stripeStatus.configured ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    {stripeStatus.isTest ? 'TEST MODE CONNECTED' : 'LIVE CONNECTED'}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                    KEYS NEEDED
+                  </span>
+                )}
+              </div>
+            </div>
+            <p className="text-navy-muted text-sm max-w-xl">
+              Configure your Stripe Secret Key below. Payments are automatically processed through Stripe Checkout, unlocking courses for registered students upon successful payment.
+            </p>
+          </div>
+
+          {/* Current Status Box */}
+          <div className="bg-[#F8FAFC] p-6 rounded-2xl border border-[#E2E8F0] space-y-4">
+            <h3 className="font-mono text-xs uppercase tracking-wider text-navy font-bold flex items-center gap-2">
+              <Key className="w-4 h-4 text-purple-700" />
+              Active Stripe Key Status
+            </h3>
+
+            <div className="flex items-center justify-between flex-wrap gap-3 p-4 bg-white rounded-xl border border-slate-200">
+              <div>
+                <p className="text-xs text-slate-500 font-mono">Current Secret Key</p>
+                <p className="text-sm font-mono font-bold text-navy mt-0.5">
+                  {stripeStatus.configured ? stripeStatus.keyMasked : 'Not configured yet'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={fetchStripeStatus}
+                className="text-xs font-mono font-bold text-[#2563EB] hover:underline"
+              >
+                Refresh Status
+              </button>
+            </div>
+          </div>
+
+          {/* Input Form for New Key */}
+          <form onSubmit={handleSaveStripeKey} className="space-y-6">
+            <div className="space-y-3 bg-[#F8FAFC] p-6 rounded-2xl border border-[#E2E8F0]">
+              <label className="font-mono text-xs uppercase tracking-wider text-navy font-bold flex items-center gap-2">
+                Stripe Secret Key (Must start with <span className="text-[#2563EB]">sk_test_</span> or <span className="text-[#2563EB]">sk_live_</span>)
+              </label>
+              
+              <div className="relative">
+                <input
+                  type="text"
+                  value={stripeSecretKeyInput}
+                  onChange={(e) => setStripeSecretKeyInput(e.target.value.trim())}
+                  placeholder="sk_test_51..."
+                  className={`w-full bg-white border rounded-xl px-4 py-3.5 text-sm text-navy placeholder:text-[#94A3B8] font-mono focus:outline-none transition-all shadow-xs ${
+                    stripeSecretKeyInput.startsWith('pk_') 
+                      ? 'border-red-500 ring-2 ring-red-100' 
+                      : 'border-[#CBD5E1] focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100'
+                  }`}
+                />
+              </div>
+
+              {stripeSecretKeyInput.startsWith('pk_') && (
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                    You pasted the Publishable Key (<code className="font-mono font-bold">pk_...</code>)!
+                  </p>
+                  <p>
+                    Stripe requires the <strong>Secret Key</strong> which begins with <code className="font-mono font-bold text-red-900 bg-red-100 px-1 py-0.5 rounded">sk_test_...</code>. 
+                    In Stripe Dashboard, click <strong>"Reveal test key"</strong> next to Secret key.
+                  </p>
+                </div>
+              )}
+
+              <p className="text-xs text-slate-500">
+                Go to: <strong>Stripe Dashboard &gt; Developers &gt; API keys</strong> &gt; look for the row named <strong>"Secret key"</strong> (starts with <code className="font-mono bg-slate-100 px-1 py-0.5 rounded">sk_test_...</code>), click <strong>Reveal test key</strong>, and paste it here.
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isVerifyingStripe || !stripeSecretKeyInput.trim() || stripeSecretKeyInput.startsWith('pk_')}
+              className="w-full bg-gradient-to-r from-[#7000ab] to-[#0c0291] hover:opacity-95 text-white py-4 rounded-xl font-mono font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md shadow-purple-950/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {isVerifyingStripe ? (
+                <>
+                  <Settings className="w-5 h-5 animate-spin" />
+                  Verifying with Stripe...
+                </>
+              ) : (
+                <>
+                  <Check className="w-5 h-5" />
+                  Save & Validate Stripe Secret Key
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Testing Tips */}
+          <div className="p-6 rounded-2xl bg-blue-50/80 border border-blue-200 text-slate-800 space-y-2">
+            <h4 className="font-mono text-xs uppercase font-bold text-blue-900 tracking-wider">
+              Stripe Test Card Info for Development
+            </h4>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              When in test mode (<code className="bg-blue-100 px-1 py-0.5 rounded text-blue-900 font-mono">sk_test_...</code>), you can test checkout using card number: <strong className="font-mono text-blue-900">4242 4242 4242 4242</strong> with any future expiration date and any 3-digit CVC (e.g. 123).
+            </p>
+          </div>
+        </div>
+      ) : (
+      /* Main Upload Form Card */
       <div className="bg-gradient-to-br from-[#7000ab]/[0.07] via-[#2563EB]/[0.04] to-[#0c0291]/[0.08] rounded-3xl p-8 sm:p-12 border border-purple-200/60 shadow-[0_20px_50px_rgba(0,0,0,0.18)] relative overflow-hidden backdrop-blur-xs">
         <h2 className="font-serif text-2xl sm:text-3xl font-bold text-navy mb-8 pb-4 border-b border-purple-200/40">
           Upload New Lesson
@@ -472,6 +675,7 @@ export default function AdminDashboard() {
           </button>
         </form>
       </div>
+      )}
     </div>
   );
 }
