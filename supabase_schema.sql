@@ -89,3 +89,32 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
+-- 6. Create Purchases Table (for unlocking documents permanently)
+CREATE TABLE IF NOT EXISTS purchases (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  note_id UUID REFERENCES notes(id) ON DELETE CASCADE,
+  payment_status TEXT DEFAULT 'completed',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT unique_user_note UNIQUE (user_id, note_id)
+);
+
+ALTER TABLE purchases ENABLE ROW LEVEL SECURITY;
+
+-- Allow users to view their own purchases
+CREATE POLICY "Users can view their own purchases." 
+  ON purchases FOR SELECT 
+  USING (auth.uid() = user_id);
+
+-- Allow users to insert their own purchases upon completing checkout
+CREATE POLICY "Users can insert their own purchases." 
+  ON purchases FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+-- Allow admins full access
+CREATE POLICY "Admins have full access to purchases." 
+  ON purchases FOR ALL 
+  USING (
+    EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+  );
+

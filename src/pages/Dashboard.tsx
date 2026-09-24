@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { ArrowRight, BookOpen, GraduationCap, Sparkles } from 'lucide-react';
+import { confirmAndRecordPurchase, getLocalPurchases } from '@/lib/purchasesStore';
 
 interface Year {
   id: string;
@@ -19,32 +20,19 @@ export default function Dashboard() {
   useEffect(() => {
     const handleSuccess = async () => {
       if (params.get('success') === 'true' && params.get('note_id')) {
-        const noteId = params.get('note_id');
+        const noteId = params.get('note_id')!;
+        const sessionId = params.get('session_id');
+        const moduleId = params.get('module_id');
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
-          const moduleId = params.get('module_id');
-          let { error } = await supabase.from('purchases').insert({
-            user_id: session.user.id,
-            note_id: noteId,
-            payment_status: 'completed'
+          toast.success('Payment verified! Document unlocked permanently.', { id: 'purchase-success' });
+          await confirmAndRecordPurchase({
+            sessionId,
+            noteId,
+            userId: session.user.id,
+            moduleId
           });
-          
-          if (error && error.message.includes('payment_status')) {
-             console.warn("payment_status column might be missing, retrying without it...");
-             const retryRes = await supabase.from('purchases').insert({
-               user_id: session.user.id,
-               note_id: noteId
-             });
-             error = retryRes.error;
-          }
-          
-          if (error) {
-            console.error("Purchase insert error:", error);
-            toast.error(`Purchase insertion failed: ${error.message}`);
-          } else {
-            toast.success('Payment successful! Document unlocked.');
-          }
           
           if (moduleId) {
             navigate(`/modules/${moduleId}/viewer?note=${noteId}`, { replace: true });
@@ -76,7 +64,7 @@ export default function Dashboard() {
         .eq('user_id', session.user.id);
         
       if (error) {
-        // Fallback to select without relation if relation or column note_id is absent
+        // Fallback to select without relation
         const { data: fallbackData } = await supabase
           .from('purchases')
           .select('*')
@@ -88,10 +76,42 @@ export default function Dashboard() {
     } catch (err) {
       console.warn("Purchases fetch error:", err);
     }
-      
-    if (purchaseData) {
-      setPurchases(purchaseData);
+
+    // Also include any locally stored purchases that might not have returned yet from the database
+    const localPurchasedIds = getLocalPurchases(session.user.id);
+    const existingNoteIds = new Set(purchaseData.map(p => p.note_id || p.notes_id || p.id));
+    for (const localId of localPurchasedIds) {
+      if (!existingNoteIds.has(localId)) {
+        purchaseData.push({
+          id: `local-${localId}`,
+          user_id: session.user.id,
+          note_id: localId
+        });
+        existingNoteIds.add(localId);
+      }
     }
+
+    // If any items lack `notes` relation details, fetch them in batch from 'notes'
+    const notesToFetch = purchaseData.filter(p => !p.notes && (p.note_id || p.notes_id)).map(p => p.note_id || p.notes_id);
+    if (notesToFetch.length > 0) {
+      try {
+        const { data: fetchedNotes } = await supabase.from('notes').select('*').in('id', notesToFetch);
+        if (fetchedNotes) {
+          const notesMap = new Map(fetchedNotes.map(n => [n.id, n]));
+          purchaseData = purchaseData.map(p => {
+            const nId = p.note_id || p.notes_id;
+            if (!p.notes && notesMap.has(nId)) {
+              return { ...p, notes: notesMap.get(nId) };
+            }
+            return p;
+          });
+        }
+      } catch (err) {
+        console.warn("Could not batch load note details for purchases:", err);
+      }
+    }
+      
+    setPurchases(purchaseData);
 
     const { data: yearsData } = await supabase.from('years').select('*').order('name');
     if (yearsData) setYears(yearsData);

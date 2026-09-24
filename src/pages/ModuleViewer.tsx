@@ -4,6 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ArrowLeft, ChevronLeft, ChevronRight, Monitor, FileCode2, Maximize, Minimize, ZoomIn, ZoomOut, AlertCircle, Lock, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { fetchUserPurchasedNoteIds, confirmAndRecordPurchase } from '@/lib/purchasesStore';
 
 // Set up the PDF.js worker using unpkg / cdn matching pdfjs version for stability across dev and production
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -54,8 +55,26 @@ export default function ModuleViewer() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    checkAccessAndFetchNotes();
-  }, [id]);
+    const handleSuccessParam = async () => {
+      const isSuccess = params.get('success') === 'true';
+      const noteId = params.get('note_id') || params.get('note');
+      const sessionId = params.get('session_id');
+      if (isSuccess && noteId) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          toast.success("Document unlocked permanently!", { id: 'purchase-success' });
+          await confirmAndRecordPurchase({
+            sessionId,
+            noteId,
+            userId: session.user.id,
+            moduleId: id
+          });
+        }
+      }
+      checkAccessAndFetchNotes();
+    };
+    handleSuccessParam();
+  }, [id, params]);
 
   const checkAccessAndFetchNotes = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -67,25 +86,8 @@ export default function ModuleViewer() {
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
     const isAdmin = profile?.role?.toLowerCase() === 'admin' || profile?.role?.toLowerCase() === 'true';
 
-    // Fetch purchases for this user safely
-    let purchasedIds = new Set<string>();
-    try {
-      const { data: purchases, error: purchaseError } = await supabase
-        .from('purchases')
-        .select('*')
-        .eq('user_id', session.user.id);
-        
-      if (!purchaseError && purchases) {
-        purchases.forEach((p: any) => {
-          if (p.note_id) purchasedIds.add(p.note_id);
-          if (p.notes_id) purchasedIds.add(p.notes_id);
-          if (p.module_id) purchasedIds.add(p.module_id);
-          if (p.id) purchasedIds.add(p.id);
-        });
-      }
-    } catch (err) {
-      console.warn("Could not query purchases table:", err);
-    }
+    // Fetch purchases for this user safely with dual persistence (database + client storage)
+    const purchasedIds = await fetchUserPurchasedNoteIds(session.user.id);
 
     // Fetch all notes for this module
     const { data: notesData } = await supabase.from('notes').select('*').eq('module_id', id).order('order_index');

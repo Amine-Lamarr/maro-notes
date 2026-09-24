@@ -115,8 +115,8 @@ app.post('/api/stripe/config', async (req, res) => {
 let supabaseAdmin: any = null;
 function getSupabaseAdmin() {
   if (!supabaseAdmin) {
-    const url = process.env.VITE_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
     if (!url || !key) throw new Error('Supabase admin credentials missing');
     supabaseAdmin = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
   }

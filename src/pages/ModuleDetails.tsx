@@ -5,6 +5,7 @@ import { FileText, Lock, ArrowRight, Trash2, Edit2, ArrowLeft, CheckCircle2, Ext
 import { toast } from 'sonner';
 import { deleteNoteWithFiles } from '@/lib/deleteHelpers';
 import EditNoteModal from '@/components/EditNoteModal';
+import { fetchUserPurchasedNoteIds, confirmAndRecordPurchase } from '@/lib/purchasesStore';
 
 interface Module {
   id: string;
@@ -39,7 +40,26 @@ export default function ModuleDetails() {
     if (canceled) {
       toast.error("Payment canceled.");
     }
-  }, [canceled]);
+    const checkSuccess = async () => {
+      const isSuccess = searchParams.get('success') === 'true';
+      const noteId = searchParams.get('note_id');
+      const sessionId = searchParams.get('session_id');
+      if (isSuccess && noteId) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          toast.success("Document unlocked permanently!", { id: 'purchase-success' });
+          await confirmAndRecordPurchase({
+            sessionId,
+            noteId,
+            userId: session.user.id,
+            moduleId: id
+          });
+          fetchData();
+        }
+      }
+    };
+    checkSuccess();
+  }, [canceled, searchParams]);
 
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [checkoutUrlModal, setCheckoutUrlModal] = useState<{ url: string; title: string; price: number } | null>(null);
@@ -75,26 +95,8 @@ export default function ModuleDetails() {
         if (_isAdmin) {
            docs = docs.map(d => ({...d, hasPurchased: true}) as Note);
         } else {
-          let purchasedIds = new Set<string>();
-          try {
-            // First attempt with * to detect actual columns
-            const { data: purchases, error: pErr } = await supabase
-              .from('purchases')
-              .select('*')
-              .eq('user_id', session.user.id);
-              
-            if (!pErr && purchases) {
-              purchases.forEach((p: any) => {
-                if (p.note_id) purchasedIds.add(p.note_id);
-                if (p.notes_id) purchasedIds.add(p.notes_id);
-                if (p.module_id) purchasedIds.add(p.module_id);
-                if (p.id) purchasedIds.add(p.id);
-              });
-            }
-          } catch (e) {
-            console.warn("Could not query purchases table:", e);
-          }
-            
+          // Fetch purchased note IDs from both Supabase and resilient client storage
+          const purchasedIds = await fetchUserPurchasedNoteIds(session.user.id);
           docs = docs.map(d => ({...d, hasPurchased: purchasedIds.has(d.id)}) as Note);
         }
       }
