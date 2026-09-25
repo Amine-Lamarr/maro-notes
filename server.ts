@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import Stripe from 'stripe';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
@@ -123,9 +124,61 @@ function getSupabaseAdmin() {
   return supabaseAdmin;
 }
 
+// Persistent Purchase Log Store for Admin Visibility
+const DATA_DIR = path.join(process.cwd(), 'data');
+const PURCHASES_LOG_FILE = path.join(DATA_DIR, 'purchases_log.json');
+
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+function getPurchasesLog(): any[] {
+  ensureDataDir();
+  try {
+    if (fs.existsSync(PURCHASES_LOG_FILE)) {
+      const content = fs.readFileSync(PURCHASES_LOG_FILE, 'utf-8');
+      const list = JSON.parse(content);
+      return Array.isArray(list) ? list.filter(item => !item.id?.startsWith('pur_seed_')) : [];
+    }
+  } catch (err) {
+    console.error('Error reading purchases log:', err);
+  }
+  return [];
+}
+
+function savePurchaseToLog(record: any) {
+  ensureDataDir();
+  try {
+    const list = getPurchasesLog();
+    // Check if duplicate already exists by Stripe session ID or same user+note within 10 minutes
+    const exists = list.some(item => 
+      (record.stripeSessionId && item.stripeSessionId && item.stripeSessionId === record.stripeSessionId) ||
+      (record.userId && record.noteId && item.userId === record.userId && item.noteId === record.noteId && Math.abs(new Date(item.createdAt).getTime() - new Date(record.createdAt).getTime()) < 600000)
+    );
+    if (!exists) {
+      list.unshift(record);
+      fs.writeFileSync(PURCHASES_LOG_FILE, JSON.stringify(list, null, 2), 'utf-8');
+    }
+  } catch (err) {
+    console.error('Error saving to purchases log:', err);
+  }
+}
+
 app.post('/api/create-checkout-session', async (req, res) => {
   try {
-    const { noteId, title, noteTitle, price, priceMAD, currency = 'usd', userId, moduleId } = req.body;
+    const { 
+      noteId, 
+      title, 
+      noteTitle, 
+      price, 
+      priceMAD, 
+      currency = 'usd', 
+      userId, 
+      userEmail,
+      moduleId 
+    } = req.body;
     const stripe = getStripe();
     
     // Normalize price: priceMAD or price
@@ -139,7 +192,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
 
     const origin = req.headers.origin || (req.headers.host ? `${req.protocol || 'https'}://${req.headers.host}` : 'http://localhost:3000');
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment',
       line_items: [
         {
@@ -156,13 +209,23 @@ app.post('/api/create-checkout-session', async (req, res) => {
       ],
       client_reference_id: userId,
       metadata: {
-        noteId,
-        moduleId,
-        userId
+        noteId: String(noteId),
+        moduleId: String(moduleId || ''),
+        userId: String(userId || ''),
+        userEmail: String(userEmail || ''),
+        noteTitle: String(productName),
+        price: String(rawPrice),
+        currency: validCurrency
       },
-      success_url: `${origin}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}&note_id=${noteId}&module_id=${moduleId}`,
-      cancel_url: `${origin}/modules/${moduleId}?canceled=true`,
-    });
+      success_url: `${origin}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}&note_id=${noteId}&module_id=${moduleId || ''}`,
+      cancel_url: `${origin}/modules/${moduleId || ''}?canceled=true`,
+    };
+
+    if (userEmail && typeof userEmail === 'string' && userEmail.includes('@')) {
+      sessionParams.customer_email = userEmail.trim();
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     res.json({ url: session.url });
   } catch (error: any) {
@@ -180,36 +243,261 @@ app.post('/api/verify-checkout', async (req, res) => {
     const session = await stripe.checkout.sessions.retrieve(session_id);
 
     if (session.payment_status === 'paid') {
-      const { noteId, userId } = session.metadata as any;
+      const meta = (session.metadata || {}) as any;
+      const noteId = meta.noteId;
+      const userId = meta.userId || session.client_reference_id;
+      const metaEmail = meta.userEmail || '';
+      const noteTitle = meta.noteTitle || 'PDF Document';
+      const moduleId = meta.moduleId || '';
       
-      // Check if already purchased
-      const { data: existing } = await supabase
-        .from('purchases')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('note_id', noteId)
-        .single();
-        
-      if (!existing) {
-        // Grant access
-        const { error } = await supabase.from('purchases').insert({
-          user_id: userId,
-          note_id: noteId
-        });
-        
-        if (error) {
-           console.error("Purchase insert error:", error);
-           return res.status(500).json({ error: 'Failed to record purchase' });
+      const customerEmail = session.customer_details?.email || session.customer_email || metaEmail || 'client@gmail.com';
+      const amountPaid = session.amount_total ? (session.amount_total / 100) : Number(meta.price || 0);
+      const currencyPaid = (session.currency || meta.currency || 'usd').toUpperCase();
+      const currentTimestamp = new Date().toISOString();
+
+      // 1. Record to persistent purchase log store
+      savePurchaseToLog({
+        id: `pur_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        userId: userId || 'anonymous',
+        userEmail: customerEmail,
+        noteId,
+        noteTitle,
+        moduleId,
+        amount: amountPaid,
+        currency: currencyPaid,
+        paymentStatus: 'completed',
+        stripeSessionId: session.id,
+        createdAt: currentTimestamp
+      });
+      
+      // 2. Insert into Supabase purchases table
+      if (userId && noteId) {
+        try {
+          const { data: existing } = await supabase
+            .from('purchases')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('note_id', noteId)
+            .single();
+            
+          if (!existing) {
+            // Try full columns insert
+            let { error } = await supabase.from('purchases').insert({
+              user_id: userId,
+              note_id: noteId,
+              payment_status: 'completed',
+              user_email: customerEmail,
+              note_title: noteTitle,
+              amount: amountPaid,
+              currency: currencyPaid,
+              stripe_session_id: session.id
+            });
+            
+            if (error) {
+              // Fallback to minimal schema if extra columns don't exist
+              await supabase.from('purchases').insert({
+                user_id: userId,
+                note_id: noteId,
+                payment_status: 'completed'
+              });
+            }
+          }
+        } catch (dbErr) {
+          console.warn("DB purchase insert error in verify-checkout:", dbErr);
         }
       }
       
-      res.json({ success: true });
+      res.json({ 
+        success: true, 
+        userEmail: customerEmail, 
+        noteTitle, 
+        amount: amountPaid,
+        currency: currencyPaid
+      });
     } else {
       res.status(400).json({ success: false, message: 'Payment not completed' });
     }
   } catch (error: any) {
     console.error('Verify error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint to record client-side unlocked purchases
+app.post('/api/record-purchase', async (req, res) => {
+  try {
+    const { 
+      userId, 
+      userEmail, 
+      noteId, 
+      noteTitle, 
+      moduleId, 
+      amount = 0, 
+      currency = 'USD', 
+      paymentStatus = 'completed',
+      stripeSessionId 
+    } = req.body;
+
+    if (!noteId) {
+      return res.status(400).json({ error: 'Missing noteId' });
+    }
+
+    const currentTimestamp = new Date().toISOString();
+    const newRecord = {
+      id: `pur_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      userId: userId || 'anonymous',
+      userEmail: userEmail || 'client@gmail.com',
+      noteId,
+      noteTitle: noteTitle || 'Lesson PDF',
+      moduleId: moduleId || '',
+      amount: Number(amount || 0),
+      currency: (currency || 'USD').toUpperCase(),
+      paymentStatus,
+      stripeSessionId: stripeSessionId || null,
+      createdAt: currentTimestamp
+    };
+
+    savePurchaseToLog(newRecord);
+
+    // Also attempt DB insert
+    try {
+      const supabase = getSupabaseAdmin();
+      if (userId && noteId) {
+        let { error } = await supabase.from('purchases').insert({
+          user_id: userId,
+          note_id: noteId,
+          payment_status: paymentStatus,
+          user_email: userEmail,
+          note_title: noteTitle,
+          amount: Number(amount || 0),
+          currency: (currency || 'USD').toUpperCase(),
+          stripe_session_id: stripeSessionId
+        });
+        if (error) {
+          await supabase.from('purchases').insert({
+            user_id: userId,
+            note_id: noteId,
+            payment_status: paymentStatus
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('DB record warning:', e);
+    }
+
+    res.json({ success: true, record: newRecord });
+  } catch (err: any) {
+    console.error('Record purchase error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin-only endpoint: Get all purchase records with client Gmail, unlocked PDF title, amount, exact date/hour/minute
+app.get('/api/admin/purchases', async (req, res) => {
+  try {
+    const logRecords = getPurchasesLog();
+    const recordsMap = new Map<string, any>();
+
+    // Add records from file log
+    for (const rec of logRecords) {
+      const key = rec.stripeSessionId || `${rec.userId}_${rec.noteId}`;
+      recordsMap.set(key, rec);
+    }
+
+    // Attempt to merge records from Supabase database
+    try {
+      const supabase = getSupabaseAdmin();
+      const { data: dbPurchases, error: pErr } = await supabase
+        .from('purchases')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!pErr && dbPurchases && dbPurchases.length > 0) {
+        const { data: profiles } = await supabase.from('profiles').select('id, email');
+        const profilesMap = new Map((profiles || []).map((p: any) => [p.id, p.email]));
+
+        const { data: notes } = await supabase.from('notes').select('id, title, module_id, file_url');
+        const notesMap = new Map((notes || []).map((n: any) => [n.id, n]));
+
+        const { data: modules } = await supabase.from('modules').select('id, title, price');
+        const modulesMap = new Map((modules || []).map((m: any) => [m.id, m]));
+
+        for (const p of dbPurchases) {
+          const key = p.stripe_session_id || `${p.user_id}_${p.note_id}`;
+          const existing = recordsMap.get(key);
+
+          const matchedNote: any = notesMap.get(p.note_id);
+          const matchedModule: any = matchedNote?.module_id ? modulesMap.get(matchedNote.module_id) : null;
+          const userEmail = p.user_email || profilesMap.get(p.user_id) || existing?.userEmail || 'client@gmail.com';
+          const noteTitle = p.note_title || matchedNote?.title || existing?.noteTitle || 'PDF Document';
+          const amount = p.amount !== undefined && p.amount !== null ? Number(p.amount) : (existing?.amount ?? (matchedModule?.price || 0));
+          const currency = (p.currency || existing?.currency || 'USD').toUpperCase();
+
+          recordsMap.set(key, {
+            id: p.id || existing?.id || `pur_${Date.now()}`,
+            userId: p.user_id,
+            userEmail,
+            noteId: p.note_id,
+            noteTitle,
+            moduleTitle: matchedModule?.title || existing?.moduleTitle || '',
+            amount,
+            currency,
+            paymentStatus: p.payment_status || 'completed',
+            stripeSessionId: p.stripe_session_id || existing?.stripeSessionId || null,
+            createdAt: p.created_at || existing?.createdAt || new Date().toISOString()
+          });
+        }
+      }
+    } catch (dbErr) {
+      console.warn("DB merge warning in admin purchases:", dbErr);
+    }
+
+    const allPurchases = Array.from(recordsMap.values()).map(item => {
+      const d = new Date(item.createdAt);
+      const year = d.getFullYear();
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthFullNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const monthShort = monthNames[d.getMonth()] || '';
+      const monthFull = monthFullNames[d.getMonth()] || '';
+      const day = String(d.getDate()).padStart(2, '0');
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      
+      const hourNum = d.getHours();
+      const hour12 = hourNum % 12 || 12;
+      const ampm = hourNum >= 12 ? 'PM' : 'AM';
+      const time12 = `${String(hour12).padStart(2, '0')}:${minutes} ${ampm}`;
+
+      return {
+        ...item,
+        exactDate: `${monthFull} ${day}, ${year}`,
+        exactDateShort: `${monthShort} ${day}, ${year}`,
+        exactTime: `${hours}:${minutes}`,
+        exactHour: hours,
+        exactMinute: minutes,
+        exactTimeAmPm: time12,
+        exactFullTimestamp: `${monthFull} ${day}, ${year} at ${hours}:${minutes} (${time12})`,
+        formattedAmount: item.currency === 'MAD' ? `${item.amount} MAD` : `$${Number(item.amount).toFixed(2)} ${item.currency}`,
+      };
+    });
+
+    // Sort descending by date
+    allPurchases.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const totalRevenue = allPurchases.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    const uniqueUsers = new Set(allPurchases.map(p => p.userEmail.toLowerCase()).filter(Boolean)).size;
+
+    res.json({
+      success: true,
+      purchases: allPurchases,
+      totalCount: allPurchases.length,
+      totalRevenue,
+      uniqueUsersCount: uniqueUsers,
+      lastUpdated: new Date().toISOString()
+    });
+  } catch (err: any) {
+    console.error('Error fetching admin purchases:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

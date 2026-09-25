@@ -69,8 +69,12 @@ export async function confirmAndRecordPurchase(params: {
   noteId: string;
   userId: string;
   moduleId?: string | null;
+  userEmail?: string | null;
+  noteTitle?: string | null;
+  amount?: number | null;
+  currency?: string | null;
 }): Promise<{ success: boolean; message?: string }> {
-  const { sessionId, noteId, userId } = params;
+  const { sessionId, noteId, userId, moduleId, userEmail, noteTitle, amount, currency } = params;
   if (!userId || !noteId) return { success: false, message: 'Missing userId or noteId' };
 
   // 1. Immediately cache in local storage so the user NEVER gets locked out even if network lags
@@ -90,6 +94,27 @@ export async function confirmAndRecordPurchase(params: {
     } catch (err) {
       console.warn('Backend verify-checkout call failed or returned error, continuing with client insert:', err);
     }
+  } else {
+    // Call backend /api/record-purchase so it is logged in admin purchases database
+    try {
+      await fetch('/api/record-purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          userEmail: userEmail || undefined,
+          noteId,
+          noteTitle: noteTitle || undefined,
+          moduleId: moduleId || undefined,
+          amount: amount || 0,
+          currency: currency || 'USD',
+          paymentStatus: 'completed',
+          stripeSessionId: sessionId || null
+        })
+      });
+    } catch (err) {
+      console.warn('Backend record-purchase error:', err);
+    }
   }
 
   // 3. Insert into Supabase 'purchases' table from client
@@ -97,10 +122,14 @@ export async function confirmAndRecordPurchase(params: {
     let { error } = await supabase.from('purchases').insert({
       user_id: userId,
       note_id: noteId,
-      payment_status: 'completed'
+      payment_status: 'completed',
+      user_email: userEmail || undefined,
+      note_title: noteTitle || undefined,
+      amount: amount || undefined,
+      currency: currency || undefined
     });
 
-    if (error && error.message.includes('payment_status')) {
+    if (error && (error.message.includes('column') || error.message.includes('payment_status'))) {
       const retry = await supabase.from('purchases').insert({
         user_id: userId,
         note_id: noteId

@@ -31,6 +31,7 @@ export default function Dashboard() {
             sessionId,
             noteId,
             userId: session.user.id,
+            userEmail: session.user.email,
             moduleId
           });
           

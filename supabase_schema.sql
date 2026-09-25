@@ -95,9 +95,21 @@ CREATE TABLE IF NOT EXISTS purchases (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   note_id UUID REFERENCES notes(id) ON DELETE CASCADE,
   payment_status TEXT DEFAULT 'completed',
+  user_email TEXT,
+  note_title TEXT,
+  amount NUMERIC DEFAULT 0,
+  currency TEXT DEFAULT 'USD',
+  stripe_session_id TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   CONSTRAINT unique_user_note UNIQUE (user_id, note_id)
 );
+
+-- Migrations if table already existed:
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS user_email TEXT;
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS note_title TEXT;
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS amount NUMERIC DEFAULT 0;
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD';
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS stripe_session_id TEXT;
 
 ALTER TABLE purchases ENABLE ROW LEVEL SECURITY;
 
@@ -117,4 +129,5 @@ CREATE POLICY "Admins have full access to purchases."
   USING (
     EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
   );
+
 

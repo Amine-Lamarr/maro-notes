@@ -3,12 +3,17 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
-import { Settings, UploadCloud, Sparkles, FolderPlus, BookOpen, Layers, CheckCircle2, Key, CreditCard, Check, AlertTriangle } from 'lucide-react';
+import { 
+  Settings, UploadCloud, Sparkles, FolderPlus, BookOpen, Layers, CheckCircle2, 
+  Key, CreditCard, Check, AlertTriangle, ShoppingCart, Calendar, Clock, Mail, 
+  Search, RefreshCw, Download, Plus, Copy, ExternalLink, Filter, X
+} from 'lucide-react';
 
 export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [years, setYears] = useState<any[]>([]);
   const [modules, setModules] = useState<any[]>([]);
+  const [allNotes, setAllNotes] = useState<any[]>([]);
   const navigate = useNavigate();
 
   // Unified Form State
@@ -24,7 +29,7 @@ export default function AdminDashboard() {
   const [previewPdfFile, setPreviewPdfFile] = useState<File | null>(null);
 
   const [isUploading, setIsUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'upload' | 'stripe'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'purchases' | 'stripe'>('upload');
 
   // Stripe Management State
   const [stripeSecretKeyInput, setStripeSecretKeyInput] = useState('');
@@ -34,10 +39,23 @@ export default function AdminDashboard() {
   });
   const [isVerifyingStripe, setIsVerifyingStripe] = useState(false);
 
+  // Purchases Tracking State
+  const [purchases, setPurchases] = useState<any[]>([]);
+  const [isLoadingPurchases, setIsLoadingPurchases] = useState(false);
+  const [purchasesStats, setPurchasesStats] = useState({
+    totalCount: 0,
+    totalRevenue: 0,
+    uniqueUsersCount: 0,
+    lastUpdated: ''
+  });
+  const [purchaseSearchQuery, setPurchaseSearchQuery] = useState('');
+  const [purchaseDateFilter, setPurchaseDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+
   useEffect(() => {
     checkAdmin();
     fetchData();
     fetchStripeStatus();
+    fetchPurchases();
   }, []);
 
   const fetchStripeStatus = async () => {
@@ -102,7 +120,88 @@ export default function AdminDashboard() {
 
     const { data: mods } = await supabase.from('modules').select('*').order('created_at', { ascending: true });
     if (mods) setModules(mods);
+
+    const { data: nts } = await supabase.from('notes').select('id, title, module_id').order('title', { ascending: true });
+    if (nts) setAllNotes(nts);
   };
+
+  const fetchPurchases = async () => {
+    try {
+      setIsLoadingPurchases(true);
+      const res = await fetch('/api/admin/purchases');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.purchases) {
+          setPurchases(data.purchases);
+          setPurchasesStats({
+            totalCount: data.totalCount || 0,
+            totalRevenue: data.totalRevenue || 0,
+            uniqueUsersCount: data.uniqueUsersCount || 0,
+            lastUpdated: data.lastUpdated || new Date().toISOString()
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Could not fetch purchases:", err);
+    } finally {
+      setIsLoadingPurchases(false);
+    }
+  };
+
+  const exportPurchasesToCSV = () => {
+    if (purchases.length === 0) {
+      toast.info('No purchase records to export yet.');
+      return;
+    }
+
+    const headers = ['Client Gmail', 'PDF Unlocked Title', 'Course Module', 'Amount Paid', 'Currency', 'Exact Date', 'Exact Hour & Minute', 'Full Timestamp', 'Payment Status', 'Session ID / Ref'];
+    const rows = filteredPurchases.map(p => [
+      `"${p.userEmail || ''}"`,
+      `"${(p.noteTitle || '').replace(/"/g, '""')}"`,
+      `"${(p.moduleTitle || '').replace(/"/g, '""')}"`,
+      p.amount ?? 0,
+      p.currency || 'USD',
+      `"${p.exactDate || ''}"`,
+      `"${p.exactTime || ''} (${p.exactTimeAmPm || ''})"`,
+      `"${p.exactFullTimestamp || p.createdAt || ''}"`,
+      `"${p.paymentStatus || 'completed'}"`,
+      `"${p.stripeSessionId || p.id || ''}"`
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `maronotes-pdf-purchases-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Purchases export downloaded as CSV');
+  };
+
+  // Filter purchases according to search query and date filter
+  const filteredPurchases = purchases.filter(p => {
+    const q = purchaseSearchQuery.trim().toLowerCase();
+    const matchesQuery = !q || 
+      (p.userEmail && p.userEmail.toLowerCase().includes(q)) ||
+      (p.noteTitle && p.noteTitle.toLowerCase().includes(q)) ||
+      (p.moduleTitle && p.moduleTitle.toLowerCase().includes(q)) ||
+      (p.stripeSessionId && p.stripeSessionId.toLowerCase().includes(q));
+
+    if (!matchesQuery) return false;
+
+    if (purchaseDateFilter === 'all') return true;
+    
+    const pDate = new Date(p.createdAt);
+    const now = new Date();
+    const diffHours = (now.getTime() - pDate.getTime()) / (1000 * 3600);
+
+    if (purchaseDateFilter === 'today') return diffHours <= 24;
+    if (purchaseDateFilter === 'week') return diffHours <= 24 * 7;
+    if (purchaseDateFilter === 'month') return diffHours <= 24 * 30;
+
+    return true;
+  });
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -233,7 +332,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-3 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 max-w-md">
+      <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 max-w-2xl flex-wrap sm:flex-nowrap">
         <button
           onClick={() => setActiveTab('upload')}
           className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-mono text-xs uppercase tracking-wider font-bold transition-all cursor-pointer ${
@@ -244,6 +343,23 @@ export default function AdminDashboard() {
         >
           <UploadCloud className="w-4 h-4" />
           <span>Upload Lesson</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('purchases')}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-mono text-xs uppercase tracking-wider font-bold transition-all cursor-pointer ${
+            activeTab === 'purchases'
+              ? 'bg-white text-navy shadow-sm border border-slate-200'
+              : 'text-slate-500 hover:text-navy hover:bg-white/50'
+          }`}
+        >
+          <ShoppingCart className="w-4 h-4 text-[#df6000]" />
+          <span>PDF Buyers & Unlocks</span>
+          {purchases.length > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold bg-[#df6000] text-white">
+              {purchases.length}
+            </span>
+          )}
         </button>
 
         <button
@@ -262,7 +378,300 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {activeTab === 'stripe' ? (
+      {activeTab === 'purchases' ? (
+        /* PDF Sales & Unlocks Dashboard Section */
+        <div className="space-y-8 animate-in fade-in duration-300">
+          
+          {/* Section Header */}
+          <div className="bg-gradient-to-br from-[#7000ab]/[0.07] via-[#2563EB]/[0.04] to-[#df6000]/[0.06] rounded-3xl p-6 sm:p-10 border border-purple-200/60 shadow-[0_20px_50px_rgba(0,0,0,0.18)] relative overflow-hidden backdrop-blur-xs space-y-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-bold bg-purple-100 text-[#7000ab] border border-purple-200">
+                  <ShoppingCart className="w-3.5 h-3.5" />
+                  Admin Purchase Monitor
+                </div>
+                <h2 className="font-serif text-2xl sm:text-3xl font-bold text-navy flex items-center gap-2 pt-1">
+                  PDF Purchases & Unlocked Files
+                </h2>
+                <p className="text-slate-600 text-xs sm:text-sm max-w-2xl leading-relaxed">
+                  Every time a client unlocks or pays for a PDF lesson, this panel records their <strong>Gmail</strong>, the exact <strong>PDF title</strong>, the <strong>amount paid</strong>, and the <strong>exact date, hour, and minute</strong>.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={fetchPurchases}
+                  disabled={isLoadingPurchases}
+                  className="px-3.5 py-2.5 bg-white border border-slate-200 hover:border-slate-300 text-navy font-mono text-xs font-bold rounded-xl shadow-xs hover:shadow-sm transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  title="Refresh purchase transactions"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingPurchases ? 'animate-spin text-[#7000ab]' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={exportPurchasesToCSV}
+                  className="px-3.5 py-2.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 font-mono text-xs font-bold rounded-xl shadow-xs hover:shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+                  title="Export orders as CSV spreadsheet"
+                >
+                  <Download className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Export CSV</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Metrics Overview Bar */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-2">
+              <div className="bg-white/90 backdrop-blur-xs p-4 rounded-2xl border border-purple-100 shadow-xs">
+                <p className="font-mono text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Total PDF Unlocks</p>
+                <p className="text-2xl font-serif font-extrabold text-[#7000ab] mt-1">{purchases.length}</p>
+                <p className="text-[11px] text-slate-400 font-mono mt-0.5">Confirmed sales</p>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur-xs p-4 rounded-2xl border border-purple-100 shadow-xs">
+                <p className="font-mono text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Total Volume</p>
+                <p className="text-2xl font-serif font-extrabold text-emerald-600 mt-1">
+                  ${purchasesStats.totalRevenue.toFixed(2)}
+                </p>
+                <p className="text-[11px] text-slate-400 font-mono mt-0.5">Cumulative sales</p>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur-xs p-4 rounded-2xl border border-purple-100 shadow-xs">
+                <p className="font-mono text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Client Gmails</p>
+                <p className="text-2xl font-serif font-extrabold text-[#2563EB] mt-1">{purchasesStats.uniqueUsersCount}</p>
+                <p className="text-[11px] text-slate-400 font-mono mt-0.5">Distinct buyers</p>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur-xs p-4 rounded-2xl border border-purple-100 shadow-xs">
+                <p className="font-mono text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Latest Unlock</p>
+                <p className="text-sm font-bold text-navy mt-1 truncate" title={purchases[0]?.exactFullTimestamp || 'None'}>
+                  {purchases[0] ? `${purchases[0].exactDateShort} ${purchases[0].exactTime}` : 'No activity yet'}
+                </p>
+                <p className="text-[11px] text-[#df6000] font-mono mt-0.5">Live monitoring</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Search & Filter Toolbar */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-4 flex-wrap">
+            <div className="relative flex-1 min-w-[240px]">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={purchaseSearchQuery}
+                onChange={(e) => setPurchaseSearchQuery(e.target.value)}
+                placeholder="Search by client Gmail, PDF title, or Module..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-navy placeholder:text-slate-400 font-mono focus:outline-none focus:border-[#7000ab] focus:ring-1 focus:ring-purple-200"
+              />
+              {purchaseSearchQuery && (
+                <button
+                  onClick={() => setPurchaseSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-navy"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Filter className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-xs font-mono font-bold text-slate-600">Period:</span>
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-mono">
+                {(['all', 'today', 'week', 'month'] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setPurchaseDateFilter(filter)}
+                    className={`px-3 py-1 rounded-lg font-bold capitalize transition-all cursor-pointer ${
+                      purchaseDateFilter === filter
+                        ? 'bg-white text-navy shadow-xs border border-slate-200'
+                        : 'text-slate-500 hover:text-navy'
+                    }`}
+                  >
+                    {filter === 'all' ? 'All Time' : filter === 'week' ? '7 Days' : filter === 'month' ? '30 Days' : 'Today'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Activity Cards List */}
+          {filteredPurchases.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-slate-300 space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-purple-50 text-[#7000ab] flex items-center justify-center mx-auto">
+                <ShoppingCart className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-serif text-lg font-bold text-navy">No purchase records found</h3>
+                <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+                  {purchaseSearchQuery 
+                    ? `No transactions match your search "${purchaseSearchQuery}". Try clearing filters.` 
+                    : 'When students purchase or unlock a PDF via Stripe, their transaction will be listed here in real-time with their Gmail, PDF name, amount paid, and exact date, hour, and minute.'}
+                </p>
+              </div>
+              {purchaseSearchQuery && (
+                <div className="pt-2 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setPurchaseSearchQuery('')}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-mono font-bold rounded-xl"
+                  >
+                    Clear Filter
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-xs font-mono text-slate-500 px-1">
+                <span>Showing <strong>{filteredPurchases.length}</strong> of <strong>{purchases.length}</strong> unlocks</span>
+                <span>Sorted by most recent unlock</span>
+              </div>
+
+              {filteredPurchases.map((p, idx) => (
+                <div 
+                  key={p.id || idx}
+                  className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/90 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all space-y-5 group relative overflow-hidden"
+                >
+                  {/* Top Status & Gmail Badge */}
+                  <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#2563EB] border border-blue-100 flex items-center justify-center font-bold text-sm shadow-2xs">
+                        <Mail className="w-5 h-5 text-[#2563EB]" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold">Client Gmail</span>
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-extrabold bg-blue-100 text-blue-800">
+                            VERIFIED BUYER
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="font-mono text-sm sm:text-base font-bold text-navy">
+                            {p.userEmail}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(p.userEmail);
+                              toast.success(`Copied ${p.userEmail} to clipboard!`);
+                            }}
+                            className="p-1 text-slate-400 hover:text-navy rounded hover:bg-slate-100 transition-colors"
+                            title="Copy client Gmail"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <a
+                            href={`mailto:${p.userEmail}`}
+                            className="text-[11px] font-mono text-[#2563EB] hover:underline"
+                            title="Send email to client"
+                          >
+                            Email Client
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold border ${
+                        p.paymentStatus?.includes('manual')
+                          ? 'bg-amber-50 text-amber-800 border-amber-200'
+                          : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      }`}>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        {p.paymentStatus?.includes('manual') ? 'MANUAL UNLOCK' : 'PAID & UNLOCKED'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Primary Narrative Summary: This Gmail has unlocked this PDF... Paid... */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-50/90 via-blue-50/50 to-orange-50/40 border border-purple-100 text-slate-900 shadow-2xs space-y-2.5">
+                    <p className="text-sm sm:text-base leading-relaxed">
+                      <span className="font-mono font-bold text-blue-700 bg-white/90 px-2.5 py-1 rounded-lg border border-blue-200/80 shadow-2xs">
+                        {p.userEmail}
+                      </span>
+                      {' '}has unlocked the PDF called{' '}
+                      <span className="font-serif font-extrabold text-[#7000ab] text-base sm:text-lg underline decoration-purple-300 decoration-2 underline-offset-2">
+                        "{p.noteTitle}"
+                      </span>
+                    </p>
+
+                    <div className="flex items-center flex-wrap gap-2 text-xs sm:text-sm font-semibold pt-1">
+                      <span className="text-slate-600 font-mono uppercase text-xs tracking-wider">Payment:</span>
+                      <span className="font-mono font-extrabold text-emerald-800 bg-emerald-100 px-3 py-0.5 rounded-full border border-emerald-300 text-sm">
+                        {p.formattedAmount || `${p.amount} ${p.currency}`}
+                      </span>
+                      {p.moduleTitle && (
+                        <span className="text-slate-500 font-normal text-xs sm:text-sm">
+                          &bull; Curriculum: <strong className="text-slate-800 font-medium">{p.moduleTitle}</strong>
+                        </span>
+                      )}
+                      {p.adminReason && (
+                        <span className="text-slate-500 font-normal text-xs italic">
+                          ({p.adminReason})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Exact Date, Hour and Minute Grid Display */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {/* Exact Date */}
+                    <div className="p-3.5 bg-[#F8FAFC] rounded-2xl border border-slate-200/80 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-purple-100 text-[#7000ab] flex items-center justify-center shrink-0 shadow-2xs">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold">Exact Date</p>
+                        <p className="text-xs sm:text-sm font-bold text-navy font-mono">
+                          {p.exactDate || p.exactDateShort}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Exact Hour & Minute */}
+                    <div className="p-3.5 bg-[#F8FAFC] rounded-2xl border border-slate-200/80 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-orange-100 text-[#df6000] flex items-center justify-center shrink-0 shadow-2xs">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold">Exact Hour & Minute</p>
+                        <p className="text-xs sm:text-sm font-extrabold text-[#df6000] font-mono">
+                          {p.exactTime} <span className="text-slate-500 font-normal text-xs">({p.exactTimeAmPm})</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Full Timestamp & Reference */}
+                    <div className="p-3.5 bg-[#F8FAFC] rounded-2xl border border-slate-200/80 flex items-center gap-3 sm:col-span-2 lg:col-span-1">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 shadow-2xs">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold">Complete Timestamp</p>
+                        <p className="text-xs font-mono font-medium text-slate-800 truncate" title={p.exactFullTimestamp || p.createdAt}>
+                          {p.exactFullTimestamp || p.createdAt}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Transaction ID / Session ref */}
+                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1">
+                    <span className="truncate max-w-sm">Ref ID: {p.stripeSessionId || p.id}</span>
+                    <span className="text-emerald-700 font-bold flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> Full Access Active
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+        </div>
+      ) : activeTab === 'stripe' ? (
         /* Stripe API Configuration Section */
         <div className="bg-gradient-to-br from-[#7000ab]/[0.07] via-[#2563EB]/[0.04] to-[#0c0291]/[0.08] rounded-3xl p-8 sm:p-12 border border-purple-200/60 shadow-[0_20px_50px_rgba(0,0,0,0.18)] relative overflow-hidden backdrop-blur-xs space-y-8 animate-in fade-in duration-300">
           <div>

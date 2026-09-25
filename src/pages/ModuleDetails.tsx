@@ -153,10 +153,11 @@ export default function ModuleDetails() {
         body: JSON.stringify({
           noteId: note.id,
           title: `${mod?.title || 'Course'} - ${note.title || 'Document'}`,
-          noteTitle: `${mod?.title || 'Course'} - ${note.title || 'Document'}`,
+          noteTitle: note.title || `${mod?.title || 'Course'} - ${note.title || 'Document'}`,
           price: Number(note.price || 0),
           currency: 'usd',
           userId: session.user.id,
+          userEmail: session.user.email,
           moduleId: id,
         }),
       });
