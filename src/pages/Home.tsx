@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link } from "react-router";
 import { ArrowRight } from "lucide-react";
 import transparentImg from "../assets/transparent.jpeg";
@@ -5,10 +6,34 @@ import transparentImg from "../assets/transparent.jpeg";
 import ReviewsSection from "../components/ReviewsSection";
 
 export default function Home() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Pause video when scrolled out of viewport to save GPU & battery
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="flex flex-col space-y-16 lg:space-y-32 py-4 sm:py-8 lg:py-12 relative px-2 sm:px-6 -mt-[10px] sm:-mt-[30px] overflow-hidden">
       {/* Hero Section */}
-      <section className="grid lg:grid-cols-2 gap-8 md:gap-12 lg:gap-8 items-center max-w-7xl mx-auto pt-2 sm:pt-6 md:pt-10 lg:pt-16 min-h-[45vh] md:min-h-[50vh] lg:min-h-[60vh] animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      <section className="grid lg:grid-cols-2 gap-8 md:gap-12 lg:gap-8 items-center max-w-7xl mx-auto pt-2 sm:pt-6 md:pt-10 lg:pt-16 min-h-[45vh] md:min-h-[50vh] lg:min-h-[60vh] animate-in fade-in slide-in-from-bottom-4 duration-700">
         
         <div className="space-y-5 sm:space-y-6 md:space-y-8 lg:space-y-10 max-w-3xl text-left mr-auto justify-self-start translate-x-0 lg:-translate-x-[50px] px-2 sm:px-0">
           <div className="space-y-3 sm:space-y-4 md:space-y-5">
@@ -42,9 +67,11 @@ export default function Home() {
         {/* Illustration Area */}
         <div className="relative w-full h-[260px] sm:h-[340px] md:h-[390px] lg:h-[460px] xl:h-[480px] flex items-center justify-center px-2 sm:px-0 mt-4 lg:mt-0">
           <div className="relative z-10 w-full h-full flex items-center justify-center translate-x-0 lg:translate-x-[40px]">
-            <div className="group w-full max-w-xl md:max-w-2xl lg:max-w-2xl xl:max-w-[720px] h-full max-h-[380px] md:max-h-[420px] lg:max-h-[440px] flex items-center justify-center rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.45)] hover:shadow-[0_30px_70px_rgba(0,0,0,0.65)] transition-all duration-500 ease-out hover:scale-[1.02] md:hover:scale-105 hover:-translate-y-1 md:hover:-translate-y-2 cursor-pointer">
+            <div className="group w-full max-w-xl md:max-w-2xl lg:max-w-2xl xl:max-w-[720px] h-full max-h-[380px] md:max-h-[420px] lg:max-h-[440px] flex items-center justify-center rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.45)] hover:shadow-[0_30px_70px_rgba(0,0,0,0.65)] transition-all duration-500 ease-out hover:scale-[1.02] md:hover:scale-105 hover:-translate-y-1 md:hover:-translate-y-2 cursor-pointer transform-gpu">
               <video 
+                ref={videoRef}
                 src="https://stuszciqiavgjmclvdeq.supabase.co/storage/v1/object/public/pics/video.mp4" 
+                poster={transparentImg}
                 autoPlay
                 loop
                 muted
@@ -58,7 +85,7 @@ export default function Home() {
       </section>
 
       {/* Split Layout: How It Works */}
-      <section className="grid lg:grid-cols-2 gap-8 md:gap-10 lg:gap-10 items-center max-w-6xl mx-auto animate-in fade-in slide-from-bottom-8 duration-1000 delay-150 relative px-2 sm:px-0">
+      <section className="grid lg:grid-cols-2 gap-8 md:gap-10 lg:gap-10 items-center max-w-6xl mx-auto animate-in fade-in slide-from-bottom-8 duration-700 delay-150 relative px-2 sm:px-0 content-auto">
         <div className="space-y-4 sm:space-y-6 md:space-y-8 lg:pr-10 relative z-10 text-center lg:text-left">
           <h2 className="title-text text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl text-navy font-bold leading-[1.1] sm:leading-[1.06]">
             Seamless<br className="hidden lg:block" /> <span className="text-[#2563EB] italic">Access</span>
@@ -72,7 +99,7 @@ export default function Home() {
           {/* Subtle line connecting steps */}
           <div className="absolute left-7 sm:left-8 top-12 bottom-12 w-[1px] bg-[#CBD5E1] z-0 hidden sm:block"></div>
 
-          <div className="bg-white dark:bg-[#111] dark:bg-[#111] border border-[#E2E8F0] shadow-md p-6 sm:p-8 rounded-3xl flex flex-col sm:flex-row gap-5 sm:gap-7 relative z-10 transition-all hover:scale-[1.02] duration-300">
+          <div className="bg-white dark:bg-[#111] border border-[#E2E8F0] shadow-md p-6 sm:p-8 rounded-3xl flex flex-col sm:flex-row gap-5 sm:gap-7 relative z-10 transition-all hover:scale-[1.02] duration-300 transform-gpu">
             <div className="circle-button w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 bg-gradient-to-br from-[#7000ab] to-[#0c0291] text-white border-none shadow-md shadow-purple-950/20 mx-auto sm:mx-0">
               <span className="font-serif text-lg sm:text-xl font-bold">01</span>
             </div>
@@ -82,7 +109,7 @@ export default function Home() {
             </div>
           </div>
           
-          <div className="bg-white dark:bg-[#111] dark:bg-[#111] border border-[#E2E8F0] shadow-md p-6 sm:p-8 rounded-3xl flex flex-col sm:flex-row gap-5 sm:gap-7 relative z-10 transition-all hover:scale-[1.02] duration-300">
+          <div className="bg-white dark:bg-[#111] border border-[#E2E8F0] shadow-md p-6 sm:p-8 rounded-3xl flex flex-col sm:flex-row gap-5 sm:gap-7 relative z-10 transition-all hover:scale-[1.02] duration-300 transform-gpu">
             <div className="circle-button w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 bg-gradient-to-br from-[#7000ab] to-[#0c0291] text-white border-none shadow-md shadow-purple-950/20 mx-auto sm:mx-0">
               <span className="font-serif text-lg sm:text-xl font-bold">02</span>
             </div>
@@ -92,7 +119,7 @@ export default function Home() {
             </div>
           </div>
           
-          <div className="bg-white dark:bg-[#111] dark:bg-[#111] border border-[#E2E8F0] shadow-md p-6 sm:p-8 rounded-3xl flex flex-col sm:flex-row gap-5 sm:gap-7 relative z-10 transition-all hover:scale-[1.02] duration-300">
+          <div className="bg-white dark:bg-[#111] border border-[#E2E8F0] shadow-md p-6 sm:p-8 rounded-3xl flex flex-col sm:flex-row gap-5 sm:gap-7 relative z-10 transition-all hover:scale-[1.02] duration-300 transform-gpu">
             <div className="circle-button w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 bg-gradient-to-br from-[#7000ab] to-[#0c0291] text-white border-none shadow-md shadow-purple-950/20 mx-auto sm:mx-0">
               <span className="font-serif text-lg sm:text-xl font-bold">03</span>
             </div>

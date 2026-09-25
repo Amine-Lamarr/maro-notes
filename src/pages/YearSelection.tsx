@@ -64,8 +64,8 @@ export default function YearSelection() {
       {/* Header */}
       <div className="rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-16 md:p-20 bg-gradient-to-br from-[#090214] via-[#1a0130] to-[#3a0269] border border-purple-900/50 shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-4 sm:space-y-5 relative overflow-hidden">
         {/* Glow Effects */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#df6000]/20 blur-[80px] rounded-full pointer-events-none" />
-        <div className="absolute bottom-0 left-10 w-48 h-48 bg-[#2563EB]/20 blur-[60px] rounded-full pointer-events-none" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#df6000]/20 blur-[80px] rounded-full pointer-events-none glow-blob" />
+        <div className="absolute bottom-0 left-10 w-48 h-48 bg-[#2563EB]/20 blur-[60px] rounded-full pointer-events-none glow-blob" />
         
         <div className="relative z-10 space-y-4 sm:space-y-5">
           <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-[#ffad6b] bg-white dark:bg-[#111]/5 border border-white/10 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md">

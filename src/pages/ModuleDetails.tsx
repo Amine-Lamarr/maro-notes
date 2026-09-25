@@ -245,9 +245,9 @@ export default function ModuleDetails() {
             No lessons uploaded yet for this course.
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 content-auto">
             {notes.map((note) => (
-              <div key={note.id} className="bg-white dark:bg-[#111] border border-[#E2E8F0] hover:border-purple-300 rounded-2xl overflow-hidden flex flex-col group relative shadow-sm hover:shadow-lg transition-all duration-300">
+              <div key={note.id} className="bg-white dark:bg-[#111] border border-[#E2E8F0] hover:border-purple-300 rounded-2xl overflow-hidden flex flex-col group relative shadow-sm hover:shadow-lg transition-all duration-300 transform-gpu">
                 {isAdmin && (
                   <div className="absolute top-3 right-3 z-20 flex gap-2">
                     <button 
@@ -274,7 +274,15 @@ export default function ModuleDetails() {
                 {/* Thumbnail */}
                 {note.thumbnail_url ? (
                   <div className="w-full h-48 relative overflow-hidden bg-slate-100 dark:bg-[#222] border-b border-[#E2E8F0]">
-                    <img src={note.thumbnail_url} alt={note.title} crossOrigin="anonymous" referrerPolicy="no-referrer" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <img 
+                      src={note.thumbnail_url} 
+                      alt={note.title} 
+                      loading="lazy" 
+                      decoding="async" 
+                      crossOrigin="anonymous" 
+                      referrerPolicy="no-referrer" 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                    />
                   </div>
                 ) : (
                   <div className="w-full h-44 bg-purple-50/60 border-b border-purple-100 flex items-center justify-center">

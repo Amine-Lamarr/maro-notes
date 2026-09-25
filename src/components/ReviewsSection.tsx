@@ -104,7 +104,7 @@ export default function ReviewsSection() {
   };
 
   return (
-    <section className="relative max-w-6xl mx-auto w-full p-8 sm:p-12 mt-8 md:mt-16 animate-in fade-in duration-1000 rounded-3xl bg-gradient-to-br from-[#7000ab]/[0.08] via-[#2563EB]/[0.04] to-[#0c0291]/[0.09] border border-purple-200/60 shadow-sm">
+    <section className="relative max-w-6xl mx-auto w-full p-8 sm:p-12 mt-8 md:mt-16 animate-in fade-in duration-700 rounded-3xl bg-gradient-to-br from-[#7000ab]/[0.08] via-[#2563EB]/[0.04] to-[#0c0291]/[0.09] border border-purple-200/60 shadow-sm content-auto">
       <div className="text-center mb-12">
         <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-[#2563EB] mb-4 inline-block bg-white border border-[#DBEAFE] px-5 py-2 rounded-full shadow-xs font-semibold">
           Student Feedback
@@ -123,35 +123,32 @@ export default function ReviewsSection() {
             </div>
           ) : (
             <motion.div 
-              layout
+              layout="position"
               className="grid sm:grid-cols-2 gap-6"
             >
               <AnimatePresence>
                 {reviews.map((review, index) => (
                   <motion.div 
                     key={review.id}
-                    layout
-                    initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                    layout="position"
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ 
                       opacity: 1, 
                       y: 0, 
-                      scale: 1,
                       transition: { 
-                        type: "spring",
-                        stiffness: 100,
-                        damping: 15,
-                        delay: index * 0.1
+                        duration: 0.35,
+                        ease: "easeOut",
+                        delay: Math.min(index * 0.05, 0.3)
                       }
                     }}
                     whileHover={{ 
-                      y: -5,
-                      scale: 1.02,
+                      y: -4,
                       transition: { duration: 0.2 }
                     }}
-                    className="bg-white/85 backdrop-blur-md p-6 rounded-2xl flex flex-col items-start gap-4 relative overflow-hidden border border-purple-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all duration-300"
+                    className="bg-white/85 backdrop-blur-md p-6 rounded-2xl flex flex-col items-start gap-4 relative overflow-hidden border border-purple-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all duration-300 transform-gpu"
                   >
                     {/* Subtle glow effect behind stars */}
-                    <div className="absolute top-6 left-6 w-16 h-16 bg-amber-400/10 blur-2xl rounded-full pointer-events-none" />
+                    <div className="absolute top-6 left-6 w-12 h-12 bg-amber-400/10 blur-xl rounded-full pointer-events-none transform-gpu" />
                     
                     <div className="flex gap-1 relative z-10">
                       {[1, 2, 3, 4, 5].map((star) => (

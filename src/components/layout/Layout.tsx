@@ -113,7 +113,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <SecurityProtection session={session} />
       <SingleSessionEnforcer />
       <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#7000ab] via-[#2563EB] to-[#0c0291] z-[60]"></div>
-      <header className="sticky top-0 z-50 w-full bg-gradient-to-r from-[#7000ab] via-[#470ba0] to-[#0c0291] text-white shadow-[0_12px_36px_rgba(0,0,0,0.35)] border-b border-purple-400/20 backdrop-blur-md">
+      <header className="sticky top-0 z-50 w-full bg-gradient-to-r from-[#7000ab] via-[#470ba0] to-[#0c0291] text-white shadow-[0_12px_36px_rgba(0,0,0,0.35)] border-b border-purple-400/20 backdrop-blur-md transform-gpu">
         <div className="container mx-auto px-4 sm:px-8 h-24 flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-3 sm:space-x-3.5 transition-all group shrink-0 hover:opacity-95">
             <div className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/15 backdrop-blur-md text-white border border-white/20 shadow-md group-hover:scale-105 transition-all shrink-0">

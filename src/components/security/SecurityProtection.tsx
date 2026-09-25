@@ -66,6 +66,8 @@ export default function SecurityProtection({ session }: SecurityProtectionProps)
 
     // If mouse leaves the HTML document completely (e.g. going up to browser extensions or OS menus)
     const handleMouseLeave = (e: MouseEvent) => {
+      // Ignore on touch devices where there is no physical mouse cursor
+      if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
       if (e.clientY <= 0 || e.clientX <= 0 || (e.clientX >= window.innerWidth || e.clientY >= window.innerHeight)) {
         setIsObscured(true);
       }

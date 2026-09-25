@@ -79,8 +79,8 @@ export default function Modules() {
       {/* Header & Search */}
       <div className="rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-16 md:p-20 bg-gradient-to-br from-[#090214] via-[#1a0130] to-[#3a0269] border border-purple-900/50 shadow-[0_20px_50px_rgba(0,0,0,0.4)] flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8 relative overflow-hidden">
         {/* Glow Effects */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#df6000]/20 blur-[80px] rounded-full pointer-events-none" />
-        <div className="absolute bottom-0 left-10 w-48 h-48 bg-[#2563EB]/20 blur-[60px] rounded-full pointer-events-none" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#df6000]/20 blur-[80px] rounded-full pointer-events-none glow-blob" />
+        <div className="absolute bottom-0 left-10 w-48 h-48 bg-[#2563EB]/20 blur-[60px] rounded-full pointer-events-none glow-blob" />
         
         <div className="space-y-4 sm:space-y-5 relative z-10">
           <button 
@@ -118,11 +118,11 @@ export default function Modules() {
           <p>No courses found for this year level.</p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 content-auto">
           {filteredModules.map((mod) => (
             <div 
               key={mod.id} 
-              className="group bg-white dark:bg-[#111] rounded-2xl border border-[#E2E8F0] hover:border-purple-300 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer p-6 flex flex-col justify-between"
+              className="group bg-white dark:bg-[#111] rounded-2xl border border-[#E2E8F0] hover:border-purple-300 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer p-6 flex flex-col justify-between transform-gpu"
               onClick={() => navigate(`/modules/${mod.id}`)}
             >
               <div className="flex items-start justify-between relative z-10 mb-6">

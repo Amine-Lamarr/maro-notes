@@ -204,8 +204,39 @@
     background-attachment: fixed;
     background-repeat: no-repeat;
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif font-normal;
   }
 }
+
+/* GPU & Rendering Performance Optimizations */
+.gpu-layer {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 500px;
+}
+
+.glow-blob {
+  transform: translate3d(0, 0, 0);
+  contain: paint;
+  will-change: transform;
+}
+
+/* Eliminate hover repaints on touch devices during scroll */
+@media (hover: none) and (pointer: coarse) {
+  .hover\:scale-105:hover,
+  .hover\:scale-102:hover,
+  .hover\:-translate-y-1:hover,
+  .hover\:-translate-y-2:hover {
+    transform: none !important;
+  }
+}
+

@@ -9,6 +9,79 @@ import { fetchUserPurchasedNoteIds, confirmAndRecordPurchase } from '@/lib/purch
 // Set up the PDF.js worker using unpkg / cdn matching pdfjs version for stability across dev and production
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
+// Lightweight virtualized PDF Page component that defers rendering until within 600px of viewport
+function LazyPdfPage({
+  pageNumber,
+  width,
+  scale,
+}: {
+  pageNumber: number;
+  width: number;
+  scale: number;
+  key?: React.Key;
+}) {
+  const [isVisible, setIsVisible] = useState(pageNumber <= 2);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (pageNumber <= 2) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            observer.disconnect();
+          }
+        });
+      },
+      { rootMargin: '600px 0px' }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [pageNumber]);
+
+  // Standard A4 aspect ratio height: width * 1.414
+  const estimatedHeight = Math.round(width * 1.414 * scale);
+
+  return (
+    <div 
+      ref={containerRef} 
+      style={{ minHeight: isVisible ? undefined : `${estimatedHeight}px`, width: `${width * scale}px` }}
+      className="flex justify-center"
+    >
+      {isVisible ? (
+        <Page 
+          pageNumber={pageNumber} 
+          renderTextLayer={false}
+          renderAnnotationLayer={false}
+          className="shadow-2xl rounded-lg border border-white/10 overflow-hidden transform-gpu"
+          width={width}
+          scale={scale}
+          loading={
+            <div 
+              style={{ height: `${estimatedHeight}px`, width: `${width * scale}px` }} 
+              className="bg-white/5 animate-pulse rounded-lg flex items-center justify-center text-xs font-mono text-white/30"
+            >
+              Page {pageNumber}
+            </div>
+          }
+        />
+      ) : (
+        <div 
+          style={{ height: `${estimatedHeight}px`, width: `${width * scale}px` }} 
+          className="bg-white/5 rounded-lg border border-white/5 flex items-center justify-center text-xs font-mono text-white/20 select-none"
+        >
+          Page {pageNumber}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ModuleViewer() {
   const { id } = useParams();
   const [params] = useSearchParams();
@@ -62,13 +135,20 @@ export default function ModuleViewer() {
       }
     };
     
-    // Force re-render on resize to update PDF scale
-    const handleResize = () => setWindowWidth(window.innerWidth);
+    // Throttled re-render on resize to update PDF scale smoothly
+    let resizeTimer: any;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        setWindowWidth(window.innerWidth);
+      }, 100);
+    };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     window.addEventListener('resize', handleResize);
     return () => {
+      clearTimeout(resizeTimer);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       window.removeEventListener('resize', handleResize);
@@ -429,18 +509,17 @@ export default function ModuleViewer() {
                   loading={<div className="py-24 text-white/40 animate-pulse small-caps tracking-widest font-mono">Loading Document...</div>}
                   className="pdf-document flex flex-col gap-8 items-center w-full"
                 >
-                  {Array.from(new Array(numPages), (_, index) => (
-                    <div key={`page_${index + 1}`}>
-                      <Page 
-                        pageNumber={index + 1} 
-                        renderTextLayer={false}
-                        renderAnnotationLayer={false}
-                        className="shadow-2xl rounded-lg border border-white/10 overflow-hidden"
-                        width={windowWidth < 768 ? Math.round(windowWidth * (isFullscreen ? 0.98 : 0.92)) : Math.min(windowWidth * (isFullscreen ? 0.85 : 0.6), isFullscreen ? 1200 : 800)}
+                  {Array.from(new Array(numPages), (_, index) => {
+                    const pageWidth = windowWidth < 768 ? Math.round(windowWidth * (isFullscreen ? 0.98 : 0.92)) : Math.min(windowWidth * (isFullscreen ? 0.85 : 0.6), isFullscreen ? 1200 : 800);
+                    return (
+                      <LazyPdfPage 
+                        key={`page_${index + 1}`}
+                        pageNumber={index + 1}
+                        width={pageWidth}
                         scale={zoom}
                       />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </Document>
              </div>
           ) : (
@@ -457,7 +536,7 @@ export default function ModuleViewer() {
                     pageNumber={pageNumber} 
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
-                    className="shadow-2xl rounded-lg border border-white/10 overflow-hidden"
+                    className="shadow-2xl rounded-lg border border-white/10 overflow-hidden transform-gpu"
                     width={windowWidth < 768 ? Math.round(windowWidth * (isFullscreen ? 0.98 : 0.92)) : Math.min(windowWidth * (isFullscreen ? 0.85 : 0.6), isFullscreen ? 1200 : 800)}
                     scale={zoom}
                   />
