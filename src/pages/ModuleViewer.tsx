@@ -25,30 +25,54 @@ export default function ModuleViewer() {
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   const toggleFullscreen = async () => {
-    if (!document.fullscreenElement) {
-      if (containerRef.current?.requestFullscreen) {
-        await containerRef.current.requestFullscreen();
+    if (!isFullscreen) {
+      // Try native HTML5 fullscreen API if available
+      try {
+        if (containerRef.current?.requestFullscreen) {
+          await containerRef.current.requestFullscreen();
+        } else if ((containerRef.current as any)?.webkitRequestFullscreen) {
+          await (containerRef.current as any).webkitRequestFullscreen();
+        }
+      } catch (err) {
+        console.warn("Native fullscreen rejected, activating CSS fullscreen for mobile:", err);
       }
+      // Always activate fullscreen state so mobile devices (iOS/Safari/Android/iframes) get true edge-to-edge view
+      setIsFullscreen(true);
+      document.body.style.overflow = 'hidden';
     } else {
-      if (document.exitFullscreen) {
-        await document.exitFullscreen();
+      try {
+        if (document.fullscreenElement) {
+          if (document.exitFullscreen) await document.exitFullscreen();
+          else if ((document as any)?.webkitExitFullscreen) await (document as any).webkitExitFullscreen();
+        }
+      } catch (err) {
+        console.warn("Exit native fullscreen error:", err);
       }
+      setIsFullscreen(false);
+      document.body.style.overflow = '';
     }
   };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      // If user exits native fullscreen via Esc key or hardware back
+      if (!document.fullscreenElement && !(document as any)?.webkitFullscreenElement) {
+        setIsFullscreen(false);
+        document.body.style.overflow = '';
+      }
     };
     
     // Force re-render on resize to update PDF scale
     const handleResize = () => setWindowWidth(window.innerWidth);
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     window.addEventListener('resize', handleResize);
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       window.removeEventListener('resize', handleResize);
+      document.body.style.overflow = '';
     };
   }, []);
   
@@ -215,15 +239,20 @@ export default function ModuleViewer() {
   return (
     <div 
       ref={containerRef}
-      className={`flex flex-col md:flex-row ${isFullscreen ? 'h-screen w-screen fixed inset-0 z-[100] m-0 rounded-none border-none bg-black' : 'h-[calc(100vh-8rem)] md:h-[85vh] overflow-hidden -mx-4 sm:-mx-8 md:border border-white/10 md:rounded-2xl bg-black'} relative transition-all duration-300`}
+      className={`flex flex-col md:flex-row ${
+        isFullscreen 
+          ? 'fixed inset-0 z-[9999] w-screen h-[100dvh] m-0 p-0 rounded-none border-none bg-black overflow-hidden' 
+          : 'h-[calc(100vh-8rem)] md:h-[85vh] overflow-hidden -mx-4 sm:-mx-8 md:border border-white/10 md:rounded-2xl bg-black'
+      } relative transition-all duration-300`}
     >
       {isFullscreen && (
         <button 
           onClick={toggleFullscreen}
-          className="fixed top-6 right-6 w-12 h-12 z-[110] rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-white dark:bg-[#111] hover:text-black transition-colors shadow-2xl"
+          className="fixed top-3 right-3 sm:top-6 sm:right-6 z-[10001] px-3.5 py-2 rounded-full bg-black/85 backdrop-blur-md border border-white/30 text-white flex items-center gap-2 hover:bg-white hover:text-black transition-all shadow-2xl active:scale-95 cursor-pointer font-mono text-xs font-bold"
           title="Exit Fullscreen"
         >
-          <Minimize className="w-5 h-5" />
+          <Minimize className="w-4 h-4" />
+          <span className="text-[11px] uppercase tracking-wider font-bold">Exit Fullscreen</span>
         </button>
       )}
       {/* Sidebar */}
@@ -235,6 +264,7 @@ export default function ModuleViewer() {
               <button 
                 className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-full border border-white/10 flex items-center justify-center bg-[#aba6e1] text-black hover:bg-[#9c95d9] transition-colors"
                 onClick={() => navigate('/dashboard')}
+                title="Back to Dashboard"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
@@ -242,10 +272,11 @@ export default function ModuleViewer() {
             </div>
             <button 
               onClick={toggleFullscreen}
-              className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-full border border-white/10 flex items-center justify-center bg-[#aba6e1] text-black hover:bg-[#9c95d9] transition-colors"
-              title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+              className="px-2.5 py-1.5 md:px-3 md:py-2 shrink-0 rounded-full border border-white/20 flex items-center gap-1.5 bg-[#aba6e1] text-black hover:bg-[#9c95d9] transition-all font-mono text-xs font-bold shadow-md cursor-pointer active:scale-95"
+              title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen Mode"}
             >
-              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+              {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+              <span className="text-[11px] font-bold uppercase tracking-wider">{isFullscreen ? 'Exit' : 'Full Screen'}</span>
             </button>
           </div>
           
@@ -314,11 +345,18 @@ export default function ModuleViewer() {
         {/* Deep ambient glow matching standard background for the pdf area */}
         <div className="absolute inset-0 bg-radial from-[#3a0269]/30 via-transparent to-black/80 pointer-events-none" />
 
-        {/* Zoom Controls */}
+        {/* Floating Zoom & Fullscreen Controls */}
         <div className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 md:fixed md:bottom-12 md:right-12 flex flex-col gap-2 z-[110]">
           <button 
+            onClick={toggleFullscreen}
+            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#7000ab] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl active:scale-95 cursor-pointer"
+            title={isFullscreen ? "Exit Fullscreen" : "Full Screen Mode"}
+          >
+            {isFullscreen ? <Minimize className="w-4 h-4 text-white" /> : <Maximize className="w-4 h-4 text-white" />}
+          </button>
+          <button 
             onClick={() => setZoom(z => Math.min(z + 0.1, 3))}
-            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#eb993f] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl active:scale-95"
+            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#eb993f] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl active:scale-95 cursor-pointer"
             title="Zoom In"
           >
             <ZoomIn className="w-4 h-4 text-white" />
@@ -328,7 +366,7 @@ export default function ModuleViewer() {
           </div>
           <button 
             onClick={() => setZoom(z => Math.max(z - 0.1, 0.5))}
-            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#b20000] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl active:scale-95"
+            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#b20000] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl active:scale-95 cursor-pointer"
             title="Zoom Out"
           >
             <ZoomOut className="w-4 h-4 text-white" />
@@ -398,7 +436,7 @@ export default function ModuleViewer() {
                         renderTextLayer={false}
                         renderAnnotationLayer={false}
                         className="shadow-2xl rounded-lg border border-white/10 overflow-hidden"
-                        width={windowWidth < 768 ? windowWidth * 0.92 : Math.min(windowWidth * (isFullscreen ? 0.8 : 0.6), isFullscreen ? 1200 : 800)}
+                        width={windowWidth < 768 ? Math.round(windowWidth * (isFullscreen ? 0.98 : 0.92)) : Math.min(windowWidth * (isFullscreen ? 0.85 : 0.6), isFullscreen ? 1200 : 800)}
                         scale={zoom}
                       />
                     </div>
@@ -406,8 +444,8 @@ export default function ModuleViewer() {
                 </Document>
              </div>
           ) : (
-            <div className="flex flex-col items-center w-full py-12 select-none relative z-10 min-h-full">
-              <div className="w-full flex justify-center pdf-container px-4">
+            <div className={`flex flex-col items-center w-full ${isFullscreen ? 'py-4 sm:py-8' : 'py-8 sm:py-12'} select-none relative z-10 min-h-full`}>
+              <div className={`w-full flex justify-center pdf-container ${isFullscreen && windowWidth < 768 ? 'px-1' : 'px-4'}`}>
                 <Document
                   file={pdfUrl}
                   onLoadSuccess={onDocumentLoadSuccess}
@@ -420,7 +458,7 @@ export default function ModuleViewer() {
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
                     className="shadow-2xl rounded-lg border border-white/10 overflow-hidden"
-                    width={windowWidth < 768 ? windowWidth * 0.92 : Math.min(windowWidth * (isFullscreen ? 0.8 : 0.6), isFullscreen ? 1200 : 800)}
+                    width={windowWidth < 768 ? Math.round(windowWidth * (isFullscreen ? 0.98 : 0.92)) : Math.min(windowWidth * (isFullscreen ? 0.85 : 0.6), isFullscreen ? 1200 : 800)}
                     scale={zoom}
                   />
                 </Document>
@@ -428,7 +466,7 @@ export default function ModuleViewer() {
               
               {/* Minimal Luxury Pagination Controls */}
               {numPages > 0 && (
-                <div className="fixed bottom-6 md:bottom-12 left-1/2 md:left-[calc(50%+9rem)] -translate-x-1/2 flex items-center gap-3 md:gap-6 glass-panel px-4 md:px-8 py-2 md:py-4 rounded-full border border-white/10 shadow-2xl z-50">
+                <div className="fixed bottom-4 sm:bottom-6 md:bottom-12 left-1/2 md:left-[calc(50%+9rem)] -translate-x-1/2 flex items-center gap-2 sm:gap-3 md:gap-6 glass-panel px-3 sm:px-4 md:px-8 py-1.5 sm:py-2 md:py-4 rounded-full border border-white/20 shadow-2xl z-50 bg-black/80 backdrop-blur-md">
                   <button 
                     onClick={() => setPageNumber(p => Math.max(1, p - 1))}
                     disabled={pageNumber <= 1}
