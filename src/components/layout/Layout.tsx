@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router';
 import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
-import { LogOut, BookOpen, GraduationCap, Menu, X } from 'lucide-react';
+import { LogOut, BookOpen, GraduationCap, Menu, X, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import SecurityProtection from '@/components/security/SecurityProtection';
 import SingleSessionEnforcer from '@/components/security/SingleSessionEnforcer';
@@ -135,22 +135,35 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               
               {session ? (
                 <>
+                  {/* Current Active Account Email Pill */}
+                  <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 bg-white/10 hover:bg-white/15 border border-white/20 rounded-full backdrop-blur-md shadow-xs transition-colors" title={`Logged in as ${session.user?.email}`}>
+                    <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white shrink-0">
+                      <Mail className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-[9px] uppercase font-mono tracking-wider text-purple-200 leading-none">Account</span>
+                      <span className="text-xs font-mono font-bold text-white truncate max-w-[140px] md:max-w-[170px] lg:max-w-[220px] leading-tight">
+                        {session.user?.email}
+                      </span>
+                    </div>
+                  </div>
+
                   {isAdmin && (
                     <Link to="/admin" className="font-mono text-xs uppercase tracking-wider text-purple-200 hover:text-white transition-colors font-medium">
                       Admin Panel
                     </Link>
                   )}
                   
-                  <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 bg-white/15 border border-white/20 rounded-full backdrop-blur-sm shadow-xs">
+                  <div className="hidden xl:flex items-center gap-2 px-3.5 py-1.5 bg-white/15 border border-white/20 rounded-full backdrop-blur-sm shadow-xs">
                     <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
                     <span className="font-mono text-[10px] text-white tracking-widest font-bold">{isAdmin ? 'ADMIN' : 'USER'} ROLE</span>
                   </div>
 
-                  <Link to="/dashboard" className="flex items-center justify-center gap-1.5 lg:gap-2 hover:bg-slate-100 dark:bg-[#222] px-4 lg:px-7 py-2.5 lg:py-3.5 shadow-md bg-white dark:bg-[#111] text-navy rounded-full transition-all font-bold">
+                  <Link to="/dashboard" className="flex items-center justify-center gap-1.5 lg:gap-2 hover:bg-slate-100 dark:bg-[#222] px-3.5 lg:px-6 py-2 lg:py-3 shadow-md bg-white dark:bg-[#111] text-navy rounded-full transition-all font-bold">
                     <BookOpen className="h-4 w-4 lg:h-4.5 lg:w-4.5 stroke-[#0F172A] shrink-0" />
                     <span className="font-mono text-xs uppercase tracking-wider pr-1 font-bold text-navy">Dashboard</span>
                   </Link>
-                  <button onClick={handleLogout} className="flex items-center justify-center gap-1.5 lg:gap-2 text-white hover:bg-white/15 px-4 lg:px-7 py-2.5 lg:py-3.5 border border-white/30 bg-transparent rounded-full transition-all font-bold">
+                  <button onClick={handleLogout} className="flex items-center justify-center gap-1.5 lg:gap-2 text-white hover:bg-white/15 px-3.5 lg:px-6 py-2 lg:py-3 border border-white/30 bg-transparent rounded-full transition-all font-bold cursor-pointer">
                     <LogOut className="h-4 w-4 lg:h-4.5 lg:w-4.5 stroke-white shrink-0" />
                     <span className="font-mono text-xs uppercase tracking-wider pr-1 font-bold text-white">Logout</span>
                   </button>
@@ -167,18 +180,25 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               )}
             </div>
 
-            <div className="md:hidden flex items-center gap-3">
+            <div className="md:hidden flex items-center gap-2">
+              {session?.user?.email && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/10 border border-white/20 rounded-full text-white max-w-[130px] sm:max-w-[160px] truncate" title={`Signed in as ${session.user.email}`}>
+                  <Mail className="w-3 h-3 text-purple-200 shrink-0" />
+                  <span className="font-mono text-[11px] font-bold truncate">{session.user.email}</span>
+                </div>
+              )}
               <Link 
                 to="/years" 
-                className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase text-white/90 shadow-[0_2px_8px_rgba(0,0,0,0.25)] bg-white/10"
+                className="px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase text-white/90 shadow-[0_2px_8px_rgba(0,0,0,0.25)] bg-white/10"
               >
                 Curriculum
               </Link>
               <button 
-                className="p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+                className="p-1.5 text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                aria-label="Toggle navigation menu"
               >
-                {isMobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
+                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
             </div>
           </nav>
@@ -190,6 +210,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex flex-col p-4 space-y-3">
               {session ? (
                 <>
+                  {/* Prominent Active Account Card on Mobile Drawer */}
+                  <div className="p-3.5 bg-white/10 border border-white/20 rounded-2xl flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
+                      <Mail className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="text-[10px] uppercase font-mono tracking-wider text-purple-200 font-semibold">Current Working Email</p>
+                      <p className="text-xs sm:text-sm font-mono font-bold text-white truncate" title={session.user?.email}>
+                        {session.user?.email}
+                      </p>
+                    </div>
+                  </div>
+
                   {isAdmin && (
                     <Link to="/admin" className="p-3 bg-white/5 rounded-xl font-mono text-sm uppercase tracking-wider text-white text-center font-bold">
                       Admin Panel
@@ -206,7 +239,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <span className="font-mono text-sm uppercase tracking-wider text-navy">Dashboard</span>
                   </Link>
                   
-                  <button onClick={handleLogout} className="flex items-center justify-center gap-2 text-white border border-white/30 p-4 rounded-xl font-bold">
+                  <button onClick={handleLogout} className="flex items-center justify-center gap-2 text-white border border-white/30 p-4 rounded-xl font-bold cursor-pointer">
                     <LogOut className="h-5 w-5 stroke-white" />
                     <span className="font-mono text-sm uppercase tracking-wider text-white">Logout</span>
                   </button>

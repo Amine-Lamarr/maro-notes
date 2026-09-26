@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
-import { ArrowRight, BookOpen, GraduationCap, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpen, GraduationCap, Sparkles, Mail } from 'lucide-react';
 import { confirmAndRecordPurchase, getLocalPurchases } from '@/lib/purchasesStore';
 
 interface Year {
@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [params] = useSearchParams();
   const [purchases, setPurchases] = useState<any[]>([]);
   const [years, setYears] = useState<Year[]>([]);
+  const [userEmail, setUserEmail] = useState('');
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -56,6 +57,7 @@ export default function Dashboard() {
       navigate('/login');
       return;
     }
+    setUserEmail(session.user.email || '');
 
     let purchaseData: any[] = [];
     try {
@@ -139,9 +141,18 @@ export default function Dashboard() {
         <div className="absolute bottom-0 left-10 w-48 h-48 bg-[#2563EB]/20 blur-[60px] rounded-full pointer-events-none" />
         
         <div className="space-y-4 sm:space-y-5 relative z-10">
-          <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-[#ffad6b] bg-white dark:bg-[#111]/5 border border-white/10 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ffad6b]" />
-            Personal Workspace
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-[#ffad6b] bg-white dark:bg-[#111]/5 border border-white/10 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ffad6b]" />
+              Personal Workspace
+            </div>
+            {userEmail && (
+              <div className="font-mono text-xs sm:text-sm text-white bg-white/15 border border-white/20 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 backdrop-blur-md">
+                <Mail className="w-3.5 h-3.5 text-purple-200 shrink-0" />
+                <span className="text-purple-200">Email:</span>
+                <span className="font-bold text-white">{userEmail}</span>
+              </div>
+            )}
           </div>
           <h1 className="font-serif text-3xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight drop-shadow-md">
             Your Dashboard
@@ -150,6 +161,20 @@ export default function Dashboard() {
             Access your unlocked course materials, revision papers, and explore academic years.
           </p>
         </div>
+
+        {userEmail && (
+          <div className="relative z-10 w-full sm:w-auto bg-white/10 border border-white/20 backdrop-blur-md rounded-2xl p-4 sm:p-5 flex items-center gap-4 text-white shadow-lg shrink-0">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+              <Mail className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-[10px] uppercase font-mono tracking-widest text-purple-200 font-semibold">Current Working Email</p>
+              <p className="font-mono text-sm sm:text-base font-bold text-white truncate max-w-[220px] sm:max-w-[280px]" title={userEmail}>
+                {userEmail}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Unlocked Notes */}

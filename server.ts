@@ -41,8 +41,22 @@ app.get('/api/proxy-pdf', async (req, res) => {
   }
 });
 
+const STRIPE_KEY_FILE = path.join(process.cwd(), '.stripe_key');
+
 // Dynamically check Stripe configuration
-let dynamicStripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
+function loadInitialStripeKey(): string {
+  if (process.env.STRIPE_SECRET_KEY) return process.env.STRIPE_SECRET_KEY.trim();
+  try {
+    if (fs.existsSync(STRIPE_KEY_FILE)) {
+      return fs.readFileSync(STRIPE_KEY_FILE, 'utf8').trim();
+    }
+  } catch (e) {
+    console.warn('Could not read .stripe_key file:', e);
+  }
+  return '';
+}
+
+let dynamicStripeSecretKey = loadInitialStripeKey();
 
 export function getStripeKey(): string {
   return dynamicStripeSecretKey || process.env.STRIPE_SECRET_KEY || '';
@@ -51,6 +65,11 @@ export function getStripeKey(): string {
 export function setStripeKey(key: string) {
   dynamicStripeSecretKey = key.trim();
   stripeClient = null; // Re-instantiate with new key
+  try {
+    fs.writeFileSync(STRIPE_KEY_FILE, dynamicStripeSecretKey, 'utf8');
+  } catch (e) {
+    console.warn('Could not persist .stripe_key file:', e);
+  }
 }
 
 let stripeClient: Stripe | null = null;
