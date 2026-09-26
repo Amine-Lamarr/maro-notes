@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { ArrowLeft, ChevronLeft, ChevronRight, Monitor, FileCode2, Maximize, Minimize, ZoomIn, ZoomOut, AlertCircle, Lock, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Monitor, FileCode2, Maximize, Minimize, ZoomIn, ZoomOut, AlertCircle, Lock, Sparkles, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchUserPurchasedNoteIds, confirmAndRecordPurchase } from '@/lib/purchasesStore';
 
@@ -14,10 +14,12 @@ function LazyPdfPage({
   pageNumber,
   width,
   scale,
+  isFullscreenMobile,
 }: {
   pageNumber: number;
   width: number;
   scale: number;
+  isFullscreenMobile?: boolean;
   key?: React.Key;
 }) {
   const [isVisible, setIsVisible] = useState(pageNumber <= 2);
@@ -50,15 +52,15 @@ function LazyPdfPage({
   return (
     <div 
       ref={containerRef} 
-      style={{ minHeight: isVisible ? undefined : `${estimatedHeight}px`, width: `${width * scale}px` }}
-      className="flex justify-center"
+      style={{ minHeight: isVisible ? undefined : `${estimatedHeight}px`, width: isFullscreenMobile ? '100%' : `${width * scale}px` }}
+      className="flex justify-center w-full"
     >
       {isVisible ? (
         <Page 
           pageNumber={pageNumber} 
           renderTextLayer={false}
           renderAnnotationLayer={false}
-          className="shadow-2xl rounded-lg border border-white/10 overflow-hidden transform-gpu"
+          className={`${isFullscreenMobile ? 'shadow-none rounded-none border-none' : 'shadow-2xl rounded-lg border border-white/10'} overflow-hidden transform-gpu max-w-full`}
           width={width}
           scale={scale}
           loading={
@@ -94,6 +96,8 @@ export default function ModuleViewer() {
   const [viewMode, setViewMode] = useState<'presentation' | 'scroll'>('presentation');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const isMobile = windowWidth < 768;
+  const isFullscreenMobile = isFullscreen && isMobile;
   const [zoom, setZoom] = useState(1);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -321,20 +325,76 @@ export default function ModuleViewer() {
       ref={containerRef}
       className={`flex flex-col md:flex-row ${
         isFullscreen 
-          ? 'fixed inset-0 z-[9999] w-screen h-[100dvh] m-0 p-0 rounded-none border-none bg-black overflow-hidden' 
+          ? 'fixed inset-0 z-[99999] w-screen h-[100dvh] m-0 p-0 rounded-none border-none bg-black overflow-hidden' 
           : 'h-[calc(100vh-8rem)] md:h-[85vh] overflow-hidden -mx-4 sm:-mx-8 md:border border-white/10 md:rounded-2xl bg-black'
       } relative transition-all duration-300`}
     >
+      {/* Immersive Dedicated Fullscreen Header Overlay */}
       {isFullscreen && (
-        <button 
-          onClick={toggleFullscreen}
-          className="fixed top-3 right-3 sm:top-6 sm:right-6 z-[10001] px-3.5 py-2 rounded-full bg-black/85 backdrop-blur-md border border-white/30 text-white flex items-center gap-2 hover:bg-white hover:text-black transition-all shadow-2xl active:scale-95 cursor-pointer font-mono text-xs font-bold"
-          title="Exit Fullscreen"
-        >
-          <Minimize className="w-4 h-4" />
-          <span className="text-[11px] uppercase tracking-wider font-bold">Exit Fullscreen</span>
-        </button>
+        <div className="fixed top-0 left-0 right-0 z-[100010] bg-[#0c0317]/95 border-b border-purple-500/20 px-3 sm:px-6 h-12 sm:h-14 flex items-center justify-between text-white shadow-xl backdrop-blur-md">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0 max-w-[50%]">
+            <button 
+              onClick={toggleFullscreen}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 text-white font-mono text-xs font-bold transition-all cursor-pointer border border-white/20 shrink-0"
+              title="Exit Fullscreen"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Exit Fullscreen</span>
+              <span className="sm:hidden">Exit</span>
+            </button>
+            <span className="font-serif text-xs sm:text-sm font-semibold text-white/90 truncate hidden xs:inline" title={activeNote?.title}>
+              {activeNote?.title || 'Document'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Page Count */}
+            {numPages > 0 && (
+              <span className="font-mono text-xs px-2.5 py-1 rounded-full bg-white/10 text-white/90 border border-white/10 font-bold">
+                {pageNumber} <span className="text-white/40">/</span> {numPages}
+              </span>
+            )}
+
+            {/* Mode Selector */}
+            <div className="flex bg-white/10 rounded-lg p-0.5 border border-white/15">
+              <button
+                onClick={() => setViewMode('presentation')}
+                className={`px-2 py-1 text-[11px] font-mono rounded transition-colors ${viewMode === 'presentation' ? 'bg-white text-black font-bold shadow-xs' : 'text-white/70 hover:text-white'}`}
+                title="Single Page Slides"
+              >
+                Slides
+              </button>
+              <button
+                onClick={() => setViewMode('scroll')}
+                className={`px-2 py-1 text-[11px] font-mono rounded transition-colors ${viewMode === 'scroll' ? 'bg-white text-black font-bold shadow-xs' : 'text-white/70 hover:text-white'}`}
+                title="Continuous Scroll"
+              >
+                Scroll
+              </button>
+            </div>
+
+            {/* Zoom Controls */}
+            <div className="hidden sm:flex items-center gap-1 bg-white/10 rounded-full px-2 py-1 border border-white/15">
+              <button onClick={() => setZoom(z => Math.max(z - 0.1, 0.5))} className="p-1 hover:text-amber-300 active:scale-90 cursor-pointer" title="Zoom Out">
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[10px] font-mono font-bold px-1">{Math.round(zoom * 100)}%</span>
+              <button onClick={() => setZoom(z => Math.min(z + 0.1, 3))} className="p-1 hover:text-amber-300 active:scale-90 cursor-pointer" title="Zoom In">
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <button 
+              onClick={toggleFullscreen}
+              className="p-1.5 rounded-full hover:bg-white/20 active:scale-95 text-white/80 hover:text-white transition-colors cursor-pointer"
+              title="Close Fullscreen"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
       )}
+
       {/* Sidebar */}
       {!isFullscreen && (
         <div className="w-full md:w-72 bg-gradient-to-b from-[#000000] via-[#1a0130] to-[#3a0269] border-b md:border-b-0 md:border-r border-purple-900/40 flex flex-col z-20 h-auto max-h-[35vh] md:max-h-none md:h-full shrink-0 shadow-2xl">
@@ -342,7 +402,7 @@ export default function ModuleViewer() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 md:gap-4">
               <button 
-                className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-full border border-white/10 flex items-center justify-center bg-[#aba6e1] text-black hover:bg-[#9c95d9] transition-colors"
+                className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-full border border-white/10 flex items-center justify-center bg-[#aba6e1] text-black hover:bg-[#9c95d9] transition-colors cursor-pointer"
                 onClick={() => navigate('/dashboard')}
                 title="Back to Dashboard"
               >
@@ -420,41 +480,46 @@ export default function ModuleViewer() {
       )}
 
       {/* Main PDF Area */}
-      <div className="flex-1 relative flex flex-col items-center overflow-auto w-full z-10 bg-gradient-to-br from-[#000000] via-[#1f0138] to-[#3a0269] overscroll-contain touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }} onContextMenu={(e) => e.preventDefault()}>
+      <div className={`flex-1 relative flex flex-col items-center overflow-auto w-full z-10 ${isFullscreen ? 'bg-black' : 'bg-gradient-to-br from-[#000000] via-[#1f0138] to-[#3a0269]'} overscroll-contain touch-pan-y`} style={{ WebkitOverflowScrolling: 'touch' }} onContextMenu={(e) => e.preventDefault()}>
         
-        {/* Deep ambient glow matching standard background for the pdf area */}
-        <div className="absolute inset-0 bg-radial from-[#3a0269]/30 via-transparent to-black/80 pointer-events-none" />
+        {/* Deep ambient glow (only in windowed mode) */}
+        {!isFullscreen && (
+          <div className="absolute inset-0 bg-radial from-[#3a0269]/30 via-transparent to-black/80 pointer-events-none" />
+        )}
 
-        {/* Floating Zoom & Fullscreen Controls */}
-        <div className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 md:fixed md:bottom-12 md:right-12 flex flex-col gap-2 z-[110]">
-          <button 
-            onClick={toggleFullscreen}
-            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#7000ab] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl active:scale-95 cursor-pointer"
-            title={isFullscreen ? "Exit Fullscreen" : "Full Screen Mode"}
-          >
-            {isFullscreen ? <Minimize className="w-4 h-4 text-white" /> : <Maximize className="w-4 h-4 text-white" />}
-          </button>
-          <button 
-            onClick={() => setZoom(z => Math.min(z + 0.1, 3))}
-            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#eb993f] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl active:scale-95 cursor-pointer"
-            title="Zoom In"
-          >
-            <ZoomIn className="w-4 h-4 text-white" />
-          </button>
-          <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 text-[10px] md:text-xs font-mono font-bold bg-[#df6000] text-white rounded-full border border-white/20 shadow-2xl cursor-pointer" onClick={() => setZoom(1)} title="Reset Zoom">
-            {Math.round(zoom * 100)}%
+        {/* Floating Zoom & Fullscreen Controls (shown in normal desktop/tablet view, hidden in fullscreen so it doesn't block reading) */}
+        {!isFullscreen && (
+          <div className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 md:fixed md:bottom-12 md:right-12 flex flex-col gap-2 z-[110]">
+            <button 
+              onClick={toggleFullscreen}
+              className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#7000ab] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl active:scale-95 cursor-pointer"
+              title="Full Screen Mode"
+            >
+              <Maximize className="w-4 h-4 text-white" />
+            </button>
+            <button 
+              onClick={() => setZoom(z => Math.min(z + 0.1, 3))}
+              className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#eb993f] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl active:scale-95 cursor-pointer"
+              title="Zoom In"
+            >
+              <ZoomIn className="w-4 h-4 text-white" />
+            </button>
+            <div className="flex items-center justify-center h-8 w-8 md:h-10 md:w-10 text-[10px] md:text-xs font-mono font-bold bg-[#df6000] text-white rounded-full border border-white/20 shadow-2xl cursor-pointer" onClick={() => setZoom(1)} title="Reset Zoom">
+              {Math.round(zoom * 100)}%
+            </div>
+            <button 
+              onClick={() => setZoom(z => Math.max(z - 0.1, 0.5))}
+              className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#b20000] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl active:scale-95 cursor-pointer"
+              title="Zoom Out"
+            >
+              <ZoomOut className="w-4 h-4 text-white" />
+            </button>
           </div>
-          <button 
-            onClick={() => setZoom(z => Math.max(z - 0.1, 0.5))}
-            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#b20000] text-white flex items-center justify-center hover:opacity-90 transition-colors shadow-2xl active:scale-95 cursor-pointer"
-            title="Zoom Out"
-          >
-            <ZoomOut className="w-4 h-4 text-white" />
-          </button>
-        </div>
+        )}
 
+        {/* Free Preview Banner */}
         {activeNote && !activeNote.hasPurchased && (
-          <div className="absolute top-4 left-4 right-4 md:left-auto md:right-auto z-[110] bg-black/80 border border-purple-500/40 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-full backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.6)] font-sans text-xs tracking-wider flex items-center justify-between sm:justify-center gap-3 md:gap-4 max-w-xl mx-auto">
+          <div className={`${isFullscreen ? 'fixed top-12 sm:top-14 left-0 right-0 z-[100009] rounded-none' : 'absolute top-4 left-4 right-4 md:left-auto md:right-auto rounded-full'} bg-black/90 border-b border-amber-500/40 text-white px-3 sm:px-6 py-2 shadow-lg font-sans text-xs tracking-wider flex items-center justify-between sm:justify-center gap-3 md:gap-4 max-w-xl mx-auto`}>
              <div className="flex items-center gap-2">
                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
                <span className="font-mono text-[10px] sm:text-xs uppercase font-bold text-amber-300">Free Preview</span>
@@ -491,7 +556,7 @@ export default function ModuleViewer() {
                   const target = activeNote.hasPurchased ? activeNote.file_path : activeNote.preview_file_path;
                   if (target) loadPdf(target);
                 }}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors"
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors cursor-pointer"
               >
                 Retry Loading
               </button>
@@ -501,43 +566,48 @@ export default function ModuleViewer() {
 
         {pdfUrl && !pdfError ? (
           viewMode === 'scroll' ? (
-             <div className="w-full h-full relative z-10 flex flex-col items-center py-12 px-4 space-y-8">
+             <div className={`w-full h-full relative z-10 flex flex-col items-center ${isFullscreen ? 'pt-14 sm:pt-16 pb-12 px-0 sm:px-4 space-y-3 sm:space-y-6' : 'py-12 px-4 space-y-8'}`}>
                 <Document
                   file={pdfUrl}
                   onLoadSuccess={onDocumentLoadSuccess}
                   onLoadError={onDocumentLoadError}
                   loading={<div className="py-24 text-white/40 animate-pulse small-caps tracking-widest font-mono">Loading Document...</div>}
-                  className="pdf-document flex flex-col gap-8 items-center w-full"
+                  className="pdf-document flex flex-col gap-3 sm:gap-6 items-center w-full"
                 >
                   {Array.from(new Array(numPages), (_, index) => {
-                    const pageWidth = windowWidth < 768 ? Math.round(windowWidth * (isFullscreen ? 0.98 : 0.92)) : Math.min(windowWidth * (isFullscreen ? 0.85 : 0.6), isFullscreen ? 1200 : 800);
+                    const pageWidth = isFullscreenMobile 
+                      ? windowWidth 
+                      : (windowWidth < 768 
+                          ? Math.round(windowWidth * 0.94) 
+                          : Math.min(windowWidth * (isFullscreen ? 0.85 : 0.6), isFullscreen ? 1400 : 800));
                     return (
                       <LazyPdfPage 
                         key={`page_${index + 1}`}
                         pageNumber={index + 1}
                         width={pageWidth}
                         scale={zoom}
+                        isFullscreenMobile={isFullscreenMobile}
                       />
                     );
                   })}
                 </Document>
              </div>
           ) : (
-            <div className={`flex flex-col items-center w-full ${isFullscreen ? 'py-4 sm:py-8' : 'py-8 sm:py-12'} select-none relative z-10 min-h-full`}>
-              <div className={`w-full flex justify-center pdf-container ${isFullscreen && windowWidth < 768 ? 'px-1' : 'px-4'}`}>
+            <div className={`flex flex-col items-center justify-center w-full ${isFullscreen ? 'h-full pt-12 sm:pt-14 pb-16 sm:pb-20 px-0' : 'py-8 sm:py-12'} select-none relative z-10 min-h-full`}>
+              <div className={`w-full flex justify-center ${isFullscreen ? 'p-0 m-0 bg-transparent' : 'pdf-container px-4'}`}>
                 <Document
                   file={pdfUrl}
                   onLoadSuccess={onDocumentLoadSuccess}
                   onLoadError={onDocumentLoadError}
                   loading={<div className="py-24 text-white/40 animate-pulse small-caps tracking-widest font-mono">Loading Document...</div>}
-                  className="pdf-document"
+                  className="pdf-document w-full flex justify-center"
                 >
                   <Page 
                     pageNumber={pageNumber} 
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
-                    className="shadow-2xl rounded-lg border border-white/10 overflow-hidden transform-gpu"
-                    width={windowWidth < 768 ? Math.round(windowWidth * (isFullscreen ? 0.98 : 0.92)) : Math.min(windowWidth * (isFullscreen ? 0.85 : 0.6), isFullscreen ? 1200 : 800)}
+                    className={`${isFullscreenMobile ? 'shadow-none rounded-none border-none' : 'shadow-2xl rounded-lg border border-white/10'} overflow-hidden transform-gpu max-w-full`}
+                    width={isFullscreenMobile ? windowWidth : (windowWidth < 768 ? Math.round(windowWidth * 0.94) : Math.min(windowWidth * (isFullscreen ? 0.85 : 0.6), isFullscreen ? 1400 : 800))}
                     scale={zoom}
                   />
                 </Document>
@@ -545,25 +615,27 @@ export default function ModuleViewer() {
               
               {/* Minimal Luxury Pagination Controls */}
               {numPages > 0 && (
-                <div className="fixed bottom-4 sm:bottom-6 md:bottom-12 left-1/2 md:left-[calc(50%+9rem)] -translate-x-1/2 flex items-center gap-2 sm:gap-3 md:gap-6 glass-panel px-3 sm:px-4 md:px-8 py-1.5 sm:py-2 md:py-4 rounded-full border border-white/20 shadow-2xl z-50 bg-black/80 backdrop-blur-md">
+                <div className="fixed bottom-3 sm:bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-3 sm:gap-6 px-4 sm:px-6 py-2 rounded-full border border-white/20 shadow-2xl z-[100010] bg-black/90 backdrop-blur-md">
                   <button 
                     onClick={() => setPageNumber(p => Math.max(1, p - 1))}
                     disabled={pageNumber <= 1}
-                    className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full border border-[#020000] hover:bg-white dark:bg-[#111] hover:text-black transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-white"
+                    className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white text-white hover:text-black transition-colors disabled:opacity-20 cursor-pointer active:scale-90"
+                    title="Previous Page"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
-                  <span className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm font-mono tracking-widest shrink-0">
-                    <span className="font-bold">{pageNumber.toString().padStart(2, '0')}</span> 
-                    <span className="text-white/30 mx-0.5 md:mx-1">/</span> 
-                    <span className="text-white/60">{numPages.toString().padStart(2, '0')}</span>
+                  <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-mono tracking-widest shrink-0 text-white font-bold">
+                    <span>{pageNumber.toString().padStart(2, '0')}</span> 
+                    <span className="text-white/40 mx-0.5">/</span> 
+                    <span className="text-white/70">{numPages.toString().padStart(2, '0')}</span>
                   </span>
                   <button 
                     onClick={() => setPageNumber(p => Math.min(numPages, p + 1))}
                     disabled={pageNumber >= numPages}
-                    className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full border border-[#000000] hover:bg-white dark:bg-[#111] hover:text-black transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-white"
+                    className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white text-white hover:text-black transition-colors disabled:opacity-20 cursor-pointer active:scale-90"
+                    title="Next Page"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                 </div>
               )}
