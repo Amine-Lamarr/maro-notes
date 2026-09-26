@@ -71,7 +71,7 @@ function getStripe() {
 // Endpoint to inspect Stripe status and publishable info (without leaking full secret)
 app.get('/api/stripe/status', (req, res) => {
   const currentKey = getStripeKey();
-  const isConfigured = Boolean(currentKey && currentKey.startsWith('sk_'));
+  const isConfigured = Boolean(currentKey && (currentKey.startsWith('sk_') || currentKey.startsWith('rk_')));
   const keyMasked = currentKey 
     ? `${currentKey.substring(0, 7)}...${currentKey.substring(currentKey.length - 4)}` 
     : '';
@@ -79,7 +79,8 @@ app.get('/api/stripe/status', (req, res) => {
   res.json({
     configured: isConfigured,
     keyMasked,
-    isTest: currentKey.startsWith('sk_test_'),
+    isTest: currentKey.startsWith('sk_test_') || currentKey.startsWith('rk_test_'),
+    isRestricted: currentKey.startsWith('rk_'),
   });
 });
 
@@ -91,24 +92,51 @@ app.post('/api/stripe/config', async (req, res) => {
       return res.status(400).json({ error: 'Secret key is required' });
     }
     const cleanKey = secretKey.trim();
-    if (!cleanKey.startsWith('sk_test_') && !cleanKey.startsWith('sk_live_')) {
-      return res.status(400).json({ error: 'Invalid Stripe Secret Key. Keys typically start with sk_test_ or sk_live_.' });
+    const isValidPrefix = cleanKey.startsWith('sk_test_') || 
+                          cleanKey.startsWith('sk_live_') || 
+                          cleanKey.startsWith('rk_test_') || 
+                          cleanKey.startsWith('rk_live_');
+
+    if (!isValidPrefix) {
+      if (cleanKey.startsWith('pk_')) {
+        return res.status(400).json({ 
+          error: 'You pasted a Publishable Key (pk_...). Please provide a Secret Key (sk_live_ / sk_test_) or Restricted Key (rk_live_ / rk_test_).' 
+        });
+      }
+      return res.status(400).json({ 
+        error: 'Invalid Stripe Key. Keys typically start with sk_live_, sk_test_, rk_live_, or rk_test_.' 
+      });
     }
 
     // Verify key by doing a test call to Stripe
     const testStripe = new Stripe(cleanKey, { apiVersion: '2023-10-16' as any });
-    await testStripe.balance.retrieve();
+    
+    // For standard secret keys (sk_), balance.retrieve works.
+    // For restricted keys (rk_), balance might not be in granted permissions, so fallback to checkout.sessions.list
+    try {
+      await testStripe.balance.retrieve();
+    } catch (balanceErr: any) {
+      if (cleanKey.startsWith('rk_')) {
+        // Test checkout sessions endpoint which is what this app requires
+        await testStripe.checkout.sessions.list({ limit: 1 });
+      } else {
+        throw balanceErr;
+      }
+    }
 
     setStripeKey(cleanKey);
     return res.json({ 
       success: true, 
-      message: 'Stripe API key connected and verified successfully!',
-      isTest: cleanKey.startsWith('sk_test_')
+      message: cleanKey.startsWith('rk_') 
+        ? 'Stripe Restricted Key (Live/Test) connected and verified successfully!'
+        : 'Stripe API key connected and verified successfully!',
+      isTest: cleanKey.startsWith('sk_test_') || cleanKey.startsWith('rk_test_'),
+      isRestricted: cleanKey.startsWith('rk_')
     });
   } catch (err: any) {
     console.error('Stripe key verification failed:', err);
     return res.status(400).json({ 
-      error: 'Invalid Stripe Secret Key: ' + (err.message || 'Verification failed')
+      error: 'Stripe key verification failed: ' + (err.message || 'Check key and permissions.')
     });
   }
 });

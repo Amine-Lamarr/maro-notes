@@ -68,8 +68,8 @@ export default function YearSelection() {
         <div className="absolute bottom-0 left-10 w-48 h-48 bg-[#2563EB]/20 blur-[60px] rounded-full pointer-events-none glow-blob" />
         
         <div className="relative z-10 space-y-4 sm:space-y-5">
-          <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-[#ffad6b] bg-white dark:bg-[#111]/5 border border-white/10 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ffad6b]" />
+          <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-black bg-white border border-white/20 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black" />
             Academic Curriculum
           </div>
           <h1 className="font-serif text-3xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight drop-shadow-md">

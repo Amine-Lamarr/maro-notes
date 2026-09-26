@@ -221,7 +221,7 @@ export default function ModuleDetails() {
           >
             <ArrowLeft className="w-4 h-4" /> Back to Courses
           </button>
-          <div className="font-mono text-[11px] sm:text-sm uppercase tracking-widest text-white bg-white dark:bg-[#111]/10 border border-white/20 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md block w-max">
+          <div className="font-mono text-[11px] sm:text-sm uppercase tracking-widest text-black bg-white border border-white/20 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md block w-max">
             Course Syllabus
           </div>
           <h1 className="font-serif text-3xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold text-white tracking-tight drop-shadow-md">

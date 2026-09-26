@@ -98,10 +98,10 @@ export default function Modules() {
         </div>
         
         <div className="relative w-full md:w-80 relative z-10 mt-2 sm:mt-6 md:mt-0">
-          <Search className="absolute left-4 sm:left-5 top-3.5 sm:top-4 h-5 w-5 text-white/50" />
+          <Search className="absolute left-4 sm:left-5 top-3.5 sm:top-4 h-5 w-5 text-slate-400" />
           <input 
             placeholder="Search courses..." 
-            className="w-full bg-white dark:bg-[#111]/10 border border-white/20 rounded-full pl-11 sm:pl-12 pr-4 sm:pr-5 py-3 sm:py-4 text-sm sm:text-base text-white placeholder:text-white/50 focus:outline-none focus:border-[#ffad6b] focus:ring-2 focus:ring-[#ffad6b]/30 transition-all font-sans shadow-lg backdrop-blur-md"
+            className="w-full bg-white border border-white/20 rounded-full pl-11 sm:pl-12 pr-4 sm:pr-5 py-3 sm:py-4 text-sm sm:text-base text-black placeholder:text-slate-500 focus:outline-none focus:border-[#ffad6b] focus:ring-2 focus:ring-[#ffad6b]/30 transition-all font-sans shadow-lg"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

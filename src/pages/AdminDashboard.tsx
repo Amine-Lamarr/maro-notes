@@ -318,8 +318,8 @@ export default function AdminDashboard() {
         <div className="absolute bottom-0 left-10 w-48 h-48 bg-[#2563EB]/20 blur-[60px] rounded-full pointer-events-none" />
         
         <div className="relative z-10 space-y-5">
-          <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-[#ffad6b] bg-white dark:bg-[#111]/5 border border-white/10 px-5 py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md">
-            <Sparkles className="w-4 h-4 text-[#ffad6b]" />
+          <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-black bg-white border border-white/10 px-5 py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md">
+            <Sparkles className="w-4 h-4 text-black" />
             Management Center
           </div>
           <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight drop-shadow-md">
@@ -728,7 +728,7 @@ export default function AdminDashboard() {
           <form onSubmit={handleSaveStripeKey} className="space-y-6">
             <div className="space-y-3 bg-[#F8FAFC] p-6 rounded-2xl border border-[#E2E8F0]">
               <label className="font-mono text-xs uppercase tracking-wider text-navy font-bold flex items-center gap-2">
-                Stripe Secret Key (Must start with <span className="text-[#2563EB]">sk_test_</span> or <span className="text-[#2563EB]">sk_live_</span>)
+                Stripe Secret or Restricted Key (<span className="text-[#2563EB]">sk_live_</span>, <span className="text-[#2563EB]">sk_test_</span>, or <span className="text-[#7000ab]">rk_live_</span>)
               </label>
               
               <div className="relative">
@@ -736,8 +736,8 @@ export default function AdminDashboard() {
                   type="text"
                   value={stripeSecretKeyInput}
                   onChange={(e) => setStripeSecretKeyInput(e.target.value.trim())}
-                  placeholder="sk_test_51..."
-                  className={`w-full bg-white border rounded-xl px-4 py-3.5 text-sm text-navy placeholder:text-[#94A3B8] font-mono focus:outline-none transition-all shadow-xs ${
+                  placeholder="sk_live_... or rk_live_..."
+                  className={`w-full bg-white border rounded-xl px-4 py-3.5 text-sm text-black placeholder:text-[#94A3B8] font-mono focus:outline-none transition-all shadow-xs ${
                     stripeSecretKeyInput.startsWith('pk_') 
                       ? 'border-red-500 ring-2 ring-red-100' 
                       : 'border-[#CBD5E1] focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100'
@@ -752,14 +752,13 @@ export default function AdminDashboard() {
                     You pasted the Publishable Key (<code className="font-mono font-bold">pk_...</code>)!
                   </p>
                   <p>
-                    Stripe requires the <strong>Secret Key</strong> which begins with <code className="font-mono font-bold text-red-900 bg-red-100 px-1 py-0.5 rounded">sk_test_...</code>. 
-                    In Stripe Dashboard, click <strong>"Reveal test key"</strong> next to Secret key.
+                    Stripe requires a <strong>Secret Key</strong> (<code className="font-mono font-bold text-red-900 bg-red-100 px-1 py-0.5 rounded">sk_live_...</code> / <code className="font-mono font-bold text-red-900 bg-red-100 px-1 py-0.5 rounded">sk_test_...</code>) or <strong>Restricted Key</strong> (<code className="font-mono font-bold text-purple-900 bg-purple-100 px-1 py-0.5 rounded">rk_live_...</code>).
                   </p>
                 </div>
               )}
 
-              <p className="text-xs text-slate-500">
-                Go to: <strong>Stripe Dashboard &gt; Developers &gt; API keys</strong> &gt; look for the row named <strong>"Secret key"</strong> (starts with <code className="font-mono bg-slate-100 px-1 py-0.5 rounded">sk_test_...</code>), click <strong>Reveal test key</strong>, and paste it here.
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Accepted keys: standard Secret Keys (<strong>sk_live_...</strong> / <strong>sk_test_...</strong>) or Restricted Keys (<strong>rk_live_...</strong> / <strong>rk_test_...</strong> with Checkout permissions).
               </p>
             </div>
 
