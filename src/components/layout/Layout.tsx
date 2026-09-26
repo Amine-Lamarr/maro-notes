@@ -113,10 +113,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <SecurityProtection session={session} />
       <SingleSessionEnforcer />
       <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#7000ab] via-[#2563EB] to-[#0c0291] z-[60]"></div>
-      <header className="sticky top-0 z-50 w-full bg-gradient-to-r from-[#7000ab] via-[#470ba0] to-[#0c0291] text-white shadow-[0_12px_36px_rgba(0,0,0,0.35)] border-b border-purple-400/20 backdrop-blur-md transform-gpu">
+      <header className="sticky top-0 z-50 w-full bg-gradient-to-r from-[#7000ab] via-[#470ba0] to-[#0c0291] text-white shadow-md md:shadow-xl border-b border-purple-400/20 transform-gpu">
         <div className="container mx-auto px-3.5 sm:px-6 md:px-8 h-16 sm:h-20 md:h-24 flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-2.5 sm:space-x-3.5 transition-all group shrink-0 hover:opacity-95">
-            <div className="flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl sm:rounded-2xl bg-white/15 backdrop-blur-md text-white border border-white/20 shadow-md group-hover:scale-105 transition-all shrink-0">
+          <Link to="/" className="flex items-center space-x-2.5 sm:space-x-3.5 transition-opacity group shrink-0 hover:opacity-95">
+            <div className="flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl sm:rounded-2xl bg-white/15 text-white border border-white/20 shadow-xs group-hover:scale-105 transition-transform shrink-0">
               <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 text-white stroke-[2.2] shrink-0" />
             </div>
             <span className="font-serif font-bold tracking-tight text-xl sm:text-2xl md:text-3xl text-white">
@@ -184,7 +184,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="md:hidden flex items-center gap-2 shrink-0">
               <Link 
                 to="/years" 
-                className="px-2.5 py-1.5 rounded-lg text-[11px] font-mono font-bold tracking-wider uppercase text-white/90 shadow-sm bg-white/15 hover:bg-white/20 transition-colors"
+                className="px-2.5 py-1.5 rounded-lg text-[11px] font-mono font-bold tracking-wider uppercase text-white/90 shadow-xs bg-white/15 hover:bg-white/20 transition-colors"
               >
                 Curriculum
               </Link>
@@ -201,7 +201,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Mobile Logged-in Quick Status Ribbon */}
         {session?.user?.email && (
-          <div className="md:hidden w-full bg-[#32066f]/90 backdrop-blur-md border-t border-purple-400/20 px-3.5 py-1.5 flex items-center justify-between text-xs font-mono text-purple-100 shadow-inner">
+          <div className="md:hidden w-full bg-[#2a055c] border-t border-purple-400/20 px-3.5 py-1.5 flex items-center justify-between text-xs font-mono text-purple-100">
             <div className="flex items-center gap-2 min-w-0 max-w-[75%]">
               <div className="w-4 h-4 rounded-full bg-emerald-400/20 flex items-center justify-center shrink-0">
                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
@@ -218,12 +218,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 right-0 bg-[#3a067e]/95 backdrop-blur-xl border-b border-purple-400/30 shadow-2xl overflow-hidden animate-in slide-in-from-top-2 z-50">
+          <div className="md:hidden absolute top-full left-0 right-0 bg-[#2b0561] border-b border-purple-400/30 shadow-lg overflow-hidden animate-in fade-in duration-150 z-50">
             <div className="flex flex-col p-4 space-y-3">
               {session ? (
                 <>
                   {/* Rich Account Card */}
-                  <div className="p-4 bg-white/10 border border-white/20 rounded-2xl flex items-center gap-3.5 backdrop-blur-md">
+                  <div className="p-4 bg-white/10 border border-white/20 rounded-2xl flex items-center gap-3.5">
                     <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
                       <Mail className="w-5 h-5 text-white" />
                     </div>

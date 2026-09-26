@@ -245,30 +245,61 @@
   will-change: transform;
 }
 
-/* Instant tap response on mobile (removes 300ms delay) */
-@media (pointer: coarse) {
-  a, button, [role="button"], input, select, textarea {
-    touch-action: manipulation;
+/* Ultra-Smooth & Lightweight Mobile Performance Rules */
+@media (max-width: 768px) {
+  /* 1. Eliminate heavy GPU blur filters on mobile to guarantee 60-120 FPS */
+  .backdrop-blur-3xl,
+  .backdrop-blur-2xl,
+  .backdrop-blur-xl,
+  .backdrop-blur-lg,
+  .backdrop-blur-md,
+  .backdrop-blur-sm,
+  .backdrop-blur {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
-  /* Optimized blur radius for mobile GPUs */
-  .backdrop-blur-2xl {
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
+
+  /* 2. Replace heavy blur overlays with crisp, opaque or semi-opaque surfaces */
+  .glass-panel {
+    background: #0f0a1c !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
-  .backdrop-blur-xl {
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
+
+  /* 3. Lightweight shadows on mobile to avoid GPU rasterization lag */
+  .shadow-2xl {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12) !important;
   }
-  .backdrop-blur-md {
-    backdrop-filter: blur(6px) !important;
-    -webkit-backdrop-filter: blur(6px) !important;
+  .shadow-xl {
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.10) !important;
+  }
+  .shadow-lg {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  /* 4. Disable slow multi-second hover transitions on touch screens */
+  * {
+    transition-duration: 150ms !important;
+  }
+
+  /* 5. Snappy native touch responsiveness */
+  body {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: none;
   }
 }
 
-/* Eliminate hover repaints on touch devices during scroll */
-@media (hover: none) and (pointer: coarse) {
+/* Fast tap response (removes 300ms click delay on iOS & Android) */
+@media (pointer: coarse) {
+  a, button, [role="button"], input, select, textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Disable hover transform jumps on touch scroll */
   .hover\:scale-105:hover,
   .hover\:scale-102:hover,
+  .hover\:scale-\[1\.02\]:hover,
   .hover\:-translate-y-1:hover,
   .hover\:-translate-y-2:hover {
     transform: none !important;
