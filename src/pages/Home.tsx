@@ -67,7 +67,7 @@ export default function Home() {
         {/* Illustration Area */}
         <div className="relative w-full h-[260px] sm:h-[340px] md:h-[390px] lg:h-[460px] xl:h-[480px] flex items-center justify-center px-2 sm:px-0 mt-4 lg:mt-0">
           <div className="relative z-10 w-full h-full flex items-center justify-center translate-x-0 lg:translate-x-[40px]">
-            <div className="group w-full max-w-xl md:max-w-2xl lg:max-w-2xl xl:max-w-[720px] h-full max-h-[380px] md:max-h-[420px] lg:max-h-[440px] flex items-center justify-center rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.45)] hover:shadow-[0_30px_70px_rgba(0,0,0,0.65)] transition-all duration-500 ease-out hover:scale-[1.02] md:hover:scale-105 hover:-translate-y-1 md:hover:-translate-y-2 cursor-pointer transform-gpu">
+            <div style={{ contain: 'paint' }} className="group w-full max-w-xl md:max-w-2xl lg:max-w-2xl xl:max-w-[720px] h-full max-h-[380px] md:max-h-[420px] lg:max-h-[440px] flex items-center justify-center rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.45)] hover:shadow-[0_30px_70px_rgba(0,0,0,0.65)] transition-all duration-500 ease-out hover:scale-[1.02] md:hover:scale-105 hover:-translate-y-1 md:hover:-translate-y-2 cursor-pointer transform-gpu">
               <video 
                 ref={videoRef}
                 src="https://stuszciqiavgjmclvdeq.supabase.co/storage/v1/object/public/pics/video.mp4" 

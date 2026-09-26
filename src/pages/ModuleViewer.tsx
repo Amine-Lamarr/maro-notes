@@ -420,7 +420,7 @@ export default function ModuleViewer() {
       )}
 
       {/* Main PDF Area */}
-      <div className="flex-1 relative flex flex-col items-center overflow-auto w-full z-10 bg-gradient-to-br from-[#000000] via-[#1f0138] to-[#3a0269]" onContextMenu={(e) => e.preventDefault()}>
+      <div className="flex-1 relative flex flex-col items-center overflow-auto w-full z-10 bg-gradient-to-br from-[#000000] via-[#1f0138] to-[#3a0269] overscroll-contain touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }} onContextMenu={(e) => e.preventDefault()}>
         
         {/* Deep ambient glow matching standard background for the pdf area */}
         <div className="absolute inset-0 bg-radial from-[#3a0269]/30 via-transparent to-black/80 pointer-events-none" />

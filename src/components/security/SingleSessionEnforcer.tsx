@@ -13,11 +13,14 @@ export default function SingleSessionEnforcer() {
     // or on every route change.
     const enforceSingleSession = async () => {
       try {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        const localDeviceId = localStorage.getItem('device_id');
+        if (!localDeviceId) return; // Not logged in on this browser
+
         const { data: { user }, error } = await supabase.auth.getUser();
         if (error || !user) return;
 
         const currentMetadataDeviceId = user.user_metadata?.device_id;
-        const localDeviceId = localStorage.getItem('device_id');
 
         // If the user has a device_id in metadata, and it doesn't match the local one,
         // it means they logged in on another device after this one.
@@ -35,8 +38,8 @@ export default function SingleSessionEnforcer() {
 
     enforceSingleSession();
 
-    // Check periodically (every 15 seconds) to catch simultaneous active sessions
-    const intervalId = setInterval(enforceSingleSession, 15000);
+    // Check periodically (every 25 seconds) to catch simultaneous active sessions without battery drain
+    const intervalId = setInterval(enforceSingleSession, 25000);
 
     return () => clearInterval(intervalId);
   }, [location.pathname, navigate]); // re-run check slightly on route change as well

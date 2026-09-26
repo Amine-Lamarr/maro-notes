@@ -141,10 +141,10 @@ export default function ReviewsSection() {
                         delay: Math.min(index * 0.05, 0.3)
                       }
                     }}
-                    whileHover={{ 
+                    whileHover={typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches ? { 
                       y: -4,
                       transition: { duration: 0.2 }
-                    }}
+                    } : undefined}
                     className="bg-white/85 backdrop-blur-md p-6 rounded-2xl flex flex-col items-start gap-4 relative overflow-hidden border border-purple-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all duration-300 transform-gpu"
                   >
                     {/* Subtle glow effect behind stars */}

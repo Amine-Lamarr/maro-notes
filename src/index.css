@@ -195,17 +195,32 @@
     @apply border-border outline-ring/50;
   }
   html {
-    scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
   body {
     @apply text-brand-navy font-sans antialiased overflow-x-hidden;
-    background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
-    background-attachment: fixed;
-    background-repeat: no-repeat;
+    background-color: #F8FAFC;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Hardware-accelerated fixed background that never repaints on scroll */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -10;
+    pointer-events: none;
+    background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
+    transform: translate3d(0, 0, 0);
+    contain: strict;
+    will-change: transform;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif font-normal;
@@ -228,6 +243,26 @@
   transform: translate3d(0, 0, 0);
   contain: paint;
   will-change: transform;
+}
+
+/* Instant tap response on mobile (removes 300ms delay) */
+@media (pointer: coarse) {
+  a, button, [role="button"], input, select, textarea {
+    touch-action: manipulation;
+  }
+  /* Optimized blur radius for mobile GPUs */
+  .backdrop-blur-2xl {
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+  .backdrop-blur-xl {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+  .backdrop-blur-md {
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+  }
 }
 
 /* Eliminate hover repaints on touch devices during scroll */
