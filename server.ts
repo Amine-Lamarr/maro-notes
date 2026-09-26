@@ -41,35 +41,55 @@ app.get('/api/proxy-pdf', async (req, res) => {
   }
 });
 
-const STRIPE_KEY_FILE = path.join(process.cwd(), '.stripe_key');
+const DATA_DIR = path.join(process.cwd(), 'data');
+const PURCHASES_LOG_FILE = path.join(DATA_DIR, 'purchases_log.json');
+const STRIPE_CONFIG_FILE = path.join(DATA_DIR, 'stripe_config.json');
 
-// Dynamically check Stripe configuration
-function loadInitialStripeKey(): string {
-  if (process.env.STRIPE_SECRET_KEY) return process.env.STRIPE_SECRET_KEY.trim();
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+function loadPersistedStripeKey(): string {
   try {
-    if (fs.existsSync(STRIPE_KEY_FILE)) {
-      return fs.readFileSync(STRIPE_KEY_FILE, 'utf8').trim();
+    ensureDataDir();
+    if (fs.existsSync(STRIPE_CONFIG_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(STRIPE_CONFIG_FILE, 'utf-8'));
+      if (parsed && typeof parsed.stripeKey === 'string') {
+        return parsed.stripeKey.trim();
+      }
     }
-  } catch (e) {
-    console.warn('Could not read .stripe_key file:', e);
+  } catch (err) {
+    console.error('Error reading stripe_config.json:', err);
   }
   return '';
 }
 
-let dynamicStripeSecretKey = loadInitialStripeKey();
+function persistStripeKey(key: string) {
+  try {
+    ensureDataDir();
+    fs.writeFileSync(
+      STRIPE_CONFIG_FILE,
+      JSON.stringify({ stripeKey: key.trim(), updatedAt: new Date().toISOString() }, null, 2),
+      'utf-8'
+    );
+  } catch (err) {
+    console.error('Error writing stripe_config.json:', err);
+  }
+}
+
+// Dynamically check Stripe configuration
+let dynamicStripeSecretKey = loadPersistedStripeKey() || process.env.STRIPE_SECRET_KEY || '';
 
 export function getStripeKey(): string {
-  return dynamicStripeSecretKey || process.env.STRIPE_SECRET_KEY || '';
+  return dynamicStripeSecretKey || loadPersistedStripeKey() || process.env.STRIPE_SECRET_KEY || '';
 }
 
 export function setStripeKey(key: string) {
   dynamicStripeSecretKey = key.trim();
+  persistStripeKey(key);
   stripeClient = null; // Re-instantiate with new key
-  try {
-    fs.writeFileSync(STRIPE_KEY_FILE, dynamicStripeSecretKey, 'utf8');
-  } catch (e) {
-    console.warn('Could not persist .stripe_key file:', e);
-  }
 }
 
 let stripeClient: Stripe | null = null;
@@ -172,15 +192,6 @@ function getSupabaseAdmin() {
 }
 
 // Persistent Purchase Log Store for Admin Visibility
-const DATA_DIR = path.join(process.cwd(), 'data');
-const PURCHASES_LOG_FILE = path.join(DATA_DIR, 'purchases_log.json');
-
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-}
-
 function getPurchasesLog(): any[] {
   ensureDataDir();
   try {

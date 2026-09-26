@@ -41,9 +41,9 @@ export default function Home() {
               Premium Study Modules
             </div>
             
-            <h1 className="font-serif text-[34px] sm:text-[46px] md:text-[54px] lg:text-[72px] xl:text-[77px] leading-[1.12] sm:leading-[1.08] md:leading-[1.06] tracking-tight text-left text-navy drop-shadow-[0_4px_12px_rgba(0,0,0,0.18)] font-bold">
+            <h1 className="font-serif text-3xl min-[380px]:text-[34px] sm:text-[46px] md:text-[54px] lg:text-[72px] xl:text-[77px] leading-[1.15] sm:leading-[1.08] md:leading-[1.06] tracking-tight text-left text-navy drop-shadow-[0_4px_12px_rgba(0,0,0,0.18)] font-bold">
               Elevate your{" "}
-              <span className="inline whitespace-nowrap bg-gradient-to-r from-[#0e2f83] to-[#550e83] bg-clip-text text-transparent">
+              <span className="inline whitespace-normal sm:whitespace-nowrap bg-gradient-to-r from-[#0e2f83] to-[#550e83] bg-clip-text text-transparent">
                 <span className="italic">academic</span> <span>journey</span>
               </span>
             </h1>

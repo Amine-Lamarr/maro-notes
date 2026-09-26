@@ -62,20 +62,22 @@ export default function YearSelection() {
     <div className="max-w-5xl mx-auto space-y-10 sm:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pt-4 sm:pt-6 pb-20">
       
       {/* Header */}
-      <div className="rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-16 md:p-20 bg-gradient-to-br from-[#090214] via-[#1a0130] to-[#3a0269] border border-purple-900/50 shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-4 sm:space-y-5 relative overflow-hidden">
+      <div className="rounded-2xl sm:rounded-3xl md:rounded-[2.5rem] p-5 sm:p-10 md:p-16 bg-gradient-to-br from-[#090214] via-[#1a0130] to-[#3a0269] border border-purple-900/50 shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-4 sm:space-y-5 relative overflow-hidden">
         {/* Glow Effects */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#df6000]/20 blur-[80px] rounded-full pointer-events-none glow-blob" />
         <div className="absolute bottom-0 left-10 w-48 h-48 bg-[#2563EB]/20 blur-[60px] rounded-full pointer-events-none glow-blob" />
         
-        <div className="relative z-10 space-y-4 sm:space-y-5">
-          <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-black bg-white border border-white/20 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black" />
-            Academic Curriculum
+        <div className="relative z-10 space-y-3 sm:space-y-5 min-w-0">
+          <div>
+            <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-black bg-white border border-white/20 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black" />
+              Academic Curriculum
+            </div>
           </div>
-          <h1 className="font-serif text-3xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight drop-shadow-md">
+          <h1 className="font-serif text-2xl min-[360px]:text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight drop-shadow-md break-words">
             Select Your <span className="text-[#ffad6b] italic">Academic Year</span>
           </h1>
-          <p className="text-purple-100/80 text-sm sm:text-xl font-normal max-w-2xl leading-relaxed">
+          <p className="text-purple-100/80 text-xs sm:text-base md:text-lg font-normal max-w-2xl leading-relaxed">
             Choose your current level of study to access structured syllabus modules and revision sets.
           </p>
         </div>

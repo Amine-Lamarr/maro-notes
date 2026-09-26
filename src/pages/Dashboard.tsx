@@ -135,41 +135,32 @@ export default function Dashboard() {
     <div className="space-y-14 max-w-6xl mx-auto pt-4 pb-20 relative z-10 animate-in fade-in duration-700">
       
       {/* Header Banner */}
-      <div className="rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-16 md:p-20 bg-gradient-to-br from-[#090214] via-[#1a0130] to-[#3a0269] border border-purple-900/50 shadow-[0_20px_50px_rgba(0,0,0,0.4)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-8 relative overflow-hidden">
+      <div className="rounded-2xl sm:rounded-3xl md:rounded-[2.5rem] p-5 sm:p-10 md:p-16 bg-gradient-to-br from-[#090214] via-[#1a0130] to-[#3a0269] border border-purple-900/50 shadow-[0_20px_50px_rgba(0,0,0,0.4)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 sm:gap-8 relative overflow-hidden">
         {/* Glow Effects */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#df6000]/20 blur-[80px] rounded-full pointer-events-none" />
         <div className="absolute bottom-0 left-10 w-48 h-48 bg-[#2563EB]/20 blur-[60px] rounded-full pointer-events-none" />
         
-        <div className="space-y-4 sm:space-y-5 relative z-10">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-[#ffad6b] bg-white dark:bg-[#111]/5 border border-white/10 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ffad6b]" />
-              Personal Workspace
-            </div>
-            {userEmail && (
-              <div className="font-mono text-xs sm:text-sm text-white bg-white/15 border border-white/20 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 backdrop-blur-md">
-                <Mail className="w-3.5 h-3.5 text-purple-200 shrink-0" />
-                <span className="text-purple-200">Email:</span>
-                <span className="font-bold text-white">{userEmail}</span>
-              </div>
-            )}
+        <div className="space-y-3 sm:space-y-5 relative z-10 min-w-0 flex-1">
+          <div className="font-mono text-xs sm:text-sm uppercase tracking-widest text-[#ffad6b] bg-white/5 border border-white/10 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-sm inline-flex items-center gap-2 font-bold backdrop-blur-md">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ffad6b]" />
+            Personal Workspace
           </div>
-          <h1 className="font-serif text-3xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight drop-shadow-md">
+          <h1 className="font-serif text-2xl min-[360px]:text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight drop-shadow-md break-words">
             Your Dashboard
           </h1>
-          <p className="text-purple-100/80 text-sm sm:text-xl font-normal max-w-2xl leading-relaxed">
+          <p className="text-purple-100/80 text-xs sm:text-base md:text-lg font-normal max-w-2xl leading-relaxed">
             Access your unlocked course materials, revision papers, and explore academic years.
           </p>
         </div>
 
         {userEmail && (
-          <div className="relative z-10 w-full sm:w-auto bg-white/10 border border-white/20 backdrop-blur-md rounded-2xl p-4 sm:p-5 flex items-center gap-4 text-white shadow-lg shrink-0">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+          <div className="relative z-10 w-full sm:w-auto bg-white/10 border border-white/20 backdrop-blur-md rounded-2xl p-3.5 sm:p-5 flex items-center gap-3.5 text-white shadow-lg shrink-0 mt-2 sm:mt-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
               <Mail className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <div className="overflow-hidden">
+            <div className="overflow-hidden min-w-0 flex-1">
               <p className="text-[10px] uppercase font-mono tracking-widest text-purple-200 font-semibold">Current Working Email</p>
-              <p className="font-mono text-sm sm:text-base font-bold text-white truncate max-w-[220px] sm:max-w-[280px]" title={userEmail}>
+              <p className="font-mono text-xs sm:text-sm md:text-base font-bold text-white break-all" title={userEmail}>
                 {userEmail}
               </p>
             </div>
